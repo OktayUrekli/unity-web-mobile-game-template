@@ -1,0 +1,21 @@
+{
+    "name": "CrazyGames.SDK.Editor",
+    "rootNamespace": "CrazyGames",
+    "references": [
+        "CrazyGames.SDK",
+        "Unity.ProjectAuditor.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "PLATFORM_CRAZYGAMES"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,0 +1,24 @@
+{
+    "name": "_Project.Testing3D",
+    "rootNamespace": "_Project.Testing.ThreeD",
+    "references": [
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "TEST3D_PHYSICS_AVAILABLE"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.unity.modules.physics",
+            "expression": "",
+            "define": "TEST3D_PHYSICS_AVAILABLE"
+        }
+    ],
+    "noEngineReferences": false
+}

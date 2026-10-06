@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3ee9e9a1799b54642af6acbc4de076ea, type: 3}
+  m_Name: UIConfig
+  m_EditorClassIdentifier: Assembly-CSharp::_Core.UI.UIConfig
+  uiCanvasPrefab: {fileID: 1510919494301843310, guid: a66012d1e8c5368408dc3a6b25d73c3a, type: 3}
+  uiList:
+  - prefab: {fileID: 1487212396533206050, guid: b07c76a103d7a92459fae01f38c9df1f, type: 3}
+  - prefab: {fileID: 3475945585929924501, guid: 49cdaba8178d66e4d821e9773958811f, type: 3}
+  - prefab: {fileID: 8900249947379801749, guid: ee5546e5a8f82c5468c0ddfff2d0db96, type: 3}
+  - prefab: {fileID: 4491238273477554367, guid: 14346cf961443db4cb6c5723c5b3944a, type: 3}
+  - prefab: {fileID: 4491238273477554367, guid: 5b60672a78e89114b946a98474e015fa, type: 3}
+  - prefab: {fileID: 4825880831094769953, guid: 6a4b2818d6b2f334d83d8e6f7e80c403, type: 3}
+  - prefab: {fileID: 8900249947379801749, guid: d64299a0276a16e49986a06138820f36, type: 3}

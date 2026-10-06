@@ -1,0 +1,131 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9620f8c34305754d8cc9a7e49e852d9, type: 3}
+  m_Name: UI_tr
+  m_EditorClassIdentifier: Unity.Localization::UnityEngine.Localization.Tables.StringTable
+  m_LocaleId:
+    m_Code: tr
+  m_SharedData: {fileID: 11400000, guid: 8617926817eb0b04f81ecd7ba6fe344c, type: 2}
+  m_Metadata:
+    m_Items: []
+  m_TableData:
+  - m_Id: 1192251392
+    m_Localized: OYUNUN ADI
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000128
+    m_Localized: OYNA
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000129
+    m_Localized: AYARLAR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000130
+    m_Localized: "ANA MEN\xDC"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000131
+    m_Localized: KAPAT
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000132
+    m_Localized: 'En iyi: {0}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000133
+    m_Localized: Yeni rekor!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000134
+    m_Localized: SKOR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000135
+    m_Localized: "S\xDCRE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000136
+    m_Localized: DOKUN!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000137
+    m_Localized: "Puan i\xE7in butona dokun ya da Bo\u015Fluk tu\u015Funa bas"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000138
+    m_Localized: DURAKLATILDI
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000139
+    m_Localized: DEVAM ET
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000140
+    m_Localized: "S\xDCRE DOLDU!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000141
+    m_Localized: "REKLAM \u0130ZLE: +10 SN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000142
+    m_Localized: TEKRAR OYNA
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000143
+    m_Localized: "M\xDCZ\u0130K: A\xC7IK"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000144
+    m_Localized: "M\xDCZ\u0130K: KAPALI"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000145
+    m_Localized: "SES: A\xC7IK"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000146
+    m_Localized: 'SES: KAPALI'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000147
+    m_Localized: "D\u0130L"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000148
+    m_Localized: "T\u0130TRE\u015E\u0130M: A\xC7IK"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000149
+    m_Localized: "T\u0130TRE\u015E\u0130M: KAPALI"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000150
+    m_Localized: EVET
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000151
+    m_Localized: HAYIR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000152
+    m_Localized: "Oyundan \xE7\u0131k\u0131ls\u0131n m\u0131?"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000153
+    m_Localized: Project_Start_Template_2D
+    m_Metadata:
+      m_Items: []
+  references:
+    version: 2
+    RefIds: []

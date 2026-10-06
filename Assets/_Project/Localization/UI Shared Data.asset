@@ -1,0 +1,136 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b11a58205ec3474ca216360e9fa74a8, type: 3}
+  m_Name: UI Shared Data
+  m_EditorClassIdentifier: Unity.Localization::UnityEngine.Localization.Tables.SharedTableData
+  m_TableCollectionName: UI
+  m_TableCollectionNameGuidString: 8617926817eb0b04f81ecd7ba6fe344c
+  m_Entries:
+  - m_Id: 1192251392
+    m_Key: menu.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000128
+    m_Key: menu.play
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000129
+    m_Key: common.settings
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000130
+    m_Key: common.main_menu
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000131
+    m_Key: common.close
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000132
+    m_Key: common.best
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000133
+    m_Key: common.new_best
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000134
+    m_Key: hud.score
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000135
+    m_Key: hud.time
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000136
+    m_Key: hud.tap
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000137
+    m_Key: hud.hint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000138
+    m_Key: pause.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000139
+    m_Key: pause.resume
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000140
+    m_Key: gameover.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000141
+    m_Key: gameover.continue
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000142
+    m_Key: gameover.play_again
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000143
+    m_Key: settings.music_on
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000144
+    m_Key: settings.music_off
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000145
+    m_Key: settings.sfx_on
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000146
+    m_Key: settings.sfx_off
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000147
+    m_Key: common.language
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000148
+    m_Key: settings.vibration_on
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000149
+    m_Key: settings.vibration_off
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000150
+    m_Key: common.yes
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000151
+    m_Key: common.no
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000152
+    m_Key: menu.quit_confirm
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1230000153
+    m_Key: app.name
+    m_Metadata:
+      m_Items: []
+  m_Metadata:
+    m_Items: []
+  m_KeyGenerator:
+    rid: 7701657900876562647
+  references:
+    version: 2
+    RefIds:
+    - rid: 7701657900876562647
+      type: {class: DistributedUIDGenerator, ns: UnityEngine.Localization.Tables, asm: Unity.Localization}
+      data:
+        m_CustomEpoch: 1790967360763

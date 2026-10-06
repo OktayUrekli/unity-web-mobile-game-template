@@ -1,0 +1,19 @@
+{
+    "name": "CrazyGames.SDK.Demo",
+    "rootNamespace": "CrazyGames",
+    "references": [
+        "CrazyGames.SDK",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "PLATFORM_CRAZYGAMES"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
