@@ -203,3 +203,9 @@ Sahneler: `00_Bootstrap` (açılış), `01_MainMenu`, `02_Gameplay`. Test sahnel
 ## Claude ile çalışmak
 
 Proje, Claude Code ile birlikte çalışacak şekilde belgelenmiştir: kurallar `CLAUDE.md` içinde, sistemlerin ayrıntıları `.claude/skills/` altındaki skill'lerde, bilinen hatalar `.claude/skills/unity-code-review/references/known-issues.md` listesindedir. Bir hatayı düzelttiğinde veya yeni bir hata bulduğunda bu listeyi aynı değişiklikte güncelle. `.claude/settings.json` doğrulama ve kontrol script'lerinin her seferinde onay sormadan çalışmasına izin verir.
+
+---
+
+## Lisans
+
+Şablonun kendi kodu ve asset'leri [MIT lisansı](LICENSE) ile açıktır: ticari oyunlar dahil istediğin gibi kullanabilir, değiştirebilir ve dağıtabilirsin. İçindeki üçüncü taraf parçalar (DOTween, CrazyGames SDK, TextMesh Pro kaynakları, fontlar ve Package Manager paketleri) bu lisansa dahil değildir, her biri kendi lisansına tabidir. Liste ve koşullar [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) dosyasında.
