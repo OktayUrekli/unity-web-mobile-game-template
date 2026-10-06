@@ -1,4 +1,4 @@
-# Project Start Template
+# Unity Web Mobile Game Template
 
 Web ve mobil oyunlarını hızlı başlatmak için hazırlanmış, tekrar kullanılabilir bir **Unity 6 (6000.3.21f1)** şablonu. Hem **2D** hem **3D** oyunlar için kullanılabilir.
 
