@@ -11,6 +11,7 @@ The MIT license in `LICENSE` covers this template's own code and assets only. Th
 | TextMesh Pro Essential Resources | `Assets/TextMesh Pro` | Unity Technologies | [Unity Companion License](https://unity.com/legal/licenses/unity-companion-license). |
 | Liberation Sans font | `Assets/TextMesh Pro/Fonts` | Red Hat, Google | SIL Open Font License 1.1, see `LiberationSans - OFL.txt` next to the font. |
 | EmojiOne sample sprites | `Assets/TextMesh Pro/Sprites` | EmojiOne | See `EmojiOne Attribution.txt` next to the sprites. |
+| Template sounds (`templateMusic.mp3`, `templateClickSound.wav`) | `Assets/_Project/Audio` | Their original authors | CC0 1.0 (public domain); no attribution required. |
 
 ## Fetched by the Package Manager (not stored in this repository)
 
