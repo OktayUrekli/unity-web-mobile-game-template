@@ -40,6 +40,7 @@ ExportedObj/
 *.csproj
 *.unityproj
 *.sln
+*.slnx
 *.suo
 *.tmp
 *.user
@@ -94,3 +95,6 @@ crashlytics-build.properties
 
 # IL2CPP/Burst debug symbols written next to a build's output
 *_BurstDebugInformation_DoNotShip/
+
+# IDE settings
+.vscode/
