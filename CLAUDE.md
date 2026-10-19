@@ -6,10 +6,18 @@ A new game starts with `Tools/Template/New Game Setup` (company, product, bundle
 
 The framework code is 2D/3D-agnostic; the repo ships in the **2D profile** (define `GAME_2D`, `Assets/Settings/URP_2D.asset`, orthographic cameras). Switch a new game with `Tools/Template/Set Up as 2D Game` / `Set Up as 3D Game` (`Assets/_Core/Editor/GameProfileSetup.cs`), never by hand: it sets the pipeline (`URP_2D` / mobile-tuned `URP_3D`) on every quality level, the `GAME_2D`/`GAME_3D` and DOTween physics defines for WebGL/Android/iOS/Standalone, the unused physics engine to Script, and the profile packages. 3D physics stays installed in 2D as a URP/UI Toolkit dependency; NavMesh is not part of the template.
 
+## Working with me
+
+- Reply to the user in Turkish; give Editor steps in Turkish, numbered. Code, comments, skills and CLAUDE.md stay in English.
+- File and folder names use ASCII only (no Turkish characters).
+- README and other user-facing texts: natural, plain Turkish that doesn't read as AI-written.
+- When unsure about a destructive or wide change (deleting assets, editing scenes by hand, touching `_Core`), ask first.
+
 ## Run and verify
 
 - Play from `Assets/_Project/Scenes/Bootstrap/00_Bootstrap.unity` (build index 0) or a scene with a `BootstrapGuard` (every build and test scene has one). A new playable scene needs one too; without it every manager `Instance` and `ConfigurationManager.GameConfig` is null.
 - Editor open: drive it through Unity MCP (`mcp__unity-mcp__Unity_RunCommand`, `Unity_GetConsoleLogs`), EditMode tests included. Editor closed: `powershell -ExecutionPolicy Bypass -File .claude/skills/unity-verify/scripts/verify.ps1` (`-Tests` for EditMode tests; exit 0 OK, 1 errors, 2 environment). See `unity-verify`.
+- No Unity (cloud session): compile and tests can't be verified; follow "No Unity in this environment" in `unity-verify`. Unity MCP comes only with the local Editor open and the user's own MCP setup (no `.mcp.json` in the repo).
 - EditMode tests live in `Assets/_Core/Tests/Editor` (`_Core.Tests.Editor`, 107 cases: EventBus, AdPolicyService, SaveManager, SettingsManager, PlatformManager, PauseManager/GameplayStateManager, ObjectPool, AppLifecycleManager, language matching, Null services; internal test seams: `SaveManager.Init(storage, config)`, `Singleton<T>.SetInstanceForTests`, `PlatformFactory.Unregister`, `EventBus.SubscriberCount<T>`, `Shutdown()` on managers that subscribe in `Init`). Test-only MonoBehaviours go in `Assets/_Core/Tests/Runtime` (`_Core.Tests.Runtime`): Unity cannot attach components from an Editor-only assembly. `Assets/_Project/Testing/*` and `Assets/_Platforms/CrazyGames/Testing/*` are keyboard-driven harnesses in `Scenes/Test/99_Test.unity`; `99_Test3D.unity` (3D profile) tests a Rigidbody player. Test scenes stay out of Build Settings.
 - Platform: select it with `Tools/Template/Platform/...` (`Assets/_Core/Editor/PlatformSetup.cs`), never by hand: it sets `PlatformConfig.Platform`, one `PLATFORM_X` define (`PLATFORM_CRAZYGAMES`, `_YANDEX`, `_GOOGLEPLAY`) on WebGL/Android/iOS/Standalone and the WebGL template (`Assets/WebGLTemplates/<PlatformType>` when present). Bridges compile only under their define and their plug-ins link only under it (`Assets/_Core/Editor/PlatformBuildAssets.cs`; name a bridge folder after its `PlatformType`), and so does CrazySDK itself (template asmdefs in `Assets/CrazySDK`), because its SiteLock crashes other portals' WebGL builds. Android needs `com.unity.modules.androidjni` (Localization uses it).
 - Builds: `CrazySDK/Development Build` / `Release Build` (WebGL; any Web profile just sets the target); Android through the `Android - Development` (APK) / `Android - Release` (AAB) profiles with Google Play selected; `Web - Desktop - Release` (DXT) / `Web - Mobile - Release` (ASTC) for portals built with Unity's own Build. Build profiles never carry a Player Settings override: an active one replaces the template's defines. Keystores never go in the repo. `BuildValidator` (`Tools/Build/Validate Build Settings`) runs before every build and blocks a wrong scene list or a platform that doesn't match the target (checks in `crazygames-release`). Pre-release: `/crazygames-release`.
@@ -31,5 +39,7 @@ The framework code is 2D/3D-agnostic; the repo ships in the **2D profile** (defi
 ## Skills
 
 Project skills in `.claude/skills/` hold the details. They win over the generic `unity` plugin skills where both apply: platform services (never add LevelPlay or Unity Gaming Services), UI structure, WebGL size, and Editor control (no `unity-cli`, no `com.unity.pipeline`). Plugin skills without a project counterpart (TMP, audio import, sprite atlas, pixel perfect, packages) are fine to use.
+
+Two skills run only on request: `/new-game-from-template` turns a fresh repo made from this template into the game's project (Editor setup, removing the template's test scenes and harnesses, adapting CLAUDE.md, skills, known issues and README), and `/template-sync` compares a game's `Assets/_Core` and `.claude/skills` with the template's `main` and reports which way each difference should move.
 
 `.claude/skills/unity-code-review/references/known-issues.md` is the living list of current defects. Check it before relying on a system's edge-case behaviour, and update it in the same change when you fix or introduce one.

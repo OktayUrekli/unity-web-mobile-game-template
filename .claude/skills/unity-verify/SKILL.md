@@ -14,6 +14,13 @@ Prove a C# change compiles before saying it is finished. Pick the path by Editor
 Don't use the plugin's `unity-cli` or install `com.unity.pipeline` for this. Never report "done"
 with a failing or skipped verify.
 
+## No Unity in this environment
+
+Without a Unity Editor or PowerShell (a Linux or cloud session: no `mcp__unity-mcp__*` tools, no
+`powershell`), don't try to run `verify.ps1`. Report the change as **compile NOT VERIFIED** and ask
+the user to open the project in the Editor and check the Console for red errors. Never say it
+compiles.
+
 ## MCP path (Editor open)
 
 1. `mcp__unity-mcp__Unity_RunCommand` with `AssetDatabase.Refresh();` so the Editor imports the

@@ -4,7 +4,11 @@
     "allow": [
       "Bash(powershell -ExecutionPolicy Bypass -File .claude/skills/unity-verify/scripts/verify.ps1:*)",
       "Bash(bash .claude/skills/crazygames-release/scripts/preflight.sh:*)",
-      "Bash(bash .claude/skills/unity-asset-editing/scripts/find-guid.sh:*)"
+      "Bash(bash .claude/skills/unity-asset-editing/scripts/find-guid.sh:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)"
     ]
   }
 }
