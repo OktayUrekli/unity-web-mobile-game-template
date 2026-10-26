@@ -247,8 +247,8 @@ namespace _Platforms.YandexGames.Services
 
             _isAdShowing = false;
 
-            // Restore game state before the caller runs reward logic, but only undo a pause
-            // that actually happened. EventBus isolates handler exceptions, so the callback runs.
+            // Only a started ad gets a finished event. EventBus isolates handler exceptions,
+            // so the callback still runs.
             if (_adStarted)
             {
                 EventBus.Publish(new AdFinishedEvent(result == AdResult.Completed));
@@ -295,6 +295,7 @@ namespace _Platforms.YandexGames.Core
 #endif
 ```
 
-Use the `#if` only if the SDK is optional or target-specific; wrap the platform/services files in the
-same define, and an unregistered type falls back to `NullPlatform`. Add the define under Player
-Settings > Scripting Define Symbols for the relevant target(s).
+Wrap the platform and service files in the same define, so with another platform selected the type
+is unregistered and falls back to `NullPlatform`. Add the define to `PlatformSetup.Defines` with a
+menu item and select the platform through `Tools/Template/Platform/...`; never edit Scripting Define
+Symbols by hand.

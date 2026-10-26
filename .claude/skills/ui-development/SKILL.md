@@ -1,6 +1,6 @@
 ---
 name: ui-development
-description: UI in this template (2D and 3D games) - UIManager, UICanvas prefab, UIScreen/UIPopup and the animated bases, type-based UIManager and UIConfig registration, ButtonClickSound, popup stack and Back handling, DOTween show/hide, UIParticle, safe area and CanvasScaler for WebGL/mobile, TextMeshPro. Use when the task touches Assets/_Core/UI or UI prefabs/scripts in Assets/_Project ("add a menu", "pause popup", "reward window", "buttons don't respond", "UI looks wrong on mobile"). Takes precedence over the plugin skills ui and ui-ugui, which only supplement low-level uGUI mechanics.
+description: UI in this template - UIManager, UIScreen/UIPopup and the animated bases, UIConfig registration, popup stack and Back handling, button sounds, DOTween show/hide, UIParticle, safe area, CanvasScaler, localized TextMeshPro text. Use when a task touches Assets/_Core/UI or UI scripts and prefabs in Assets/_Project. Takes precedence over the plugin skills ui and ui-ugui, which only supplement low-level uGUI mechanics.
 ---
 
 # UI development

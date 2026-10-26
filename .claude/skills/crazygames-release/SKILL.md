@@ -1,6 +1,6 @@
 ---
 name: crazygames-release
-description: Pre-release checklist for shipping a CrazyGames WebGL build of this Unity template - runs file-based preflight checks (test harnesses in build scenes, build scene order, PlatformConfig target, gameplay start/stop via GameplayStateManager, unguarded UnityEditor code, debug input, CrazyGamesSettings, Resources and packages), a batch-mode compile, then walks the user through the Release Build, Analyzer size check, local QA and portal upload, ending with a pass/fail report. Invoked manually with /crazygames-release.
+description: Pre-release checklist for a CrazyGames WebGL build - file-based preflight checks, a compile check, then the Release Build, Analyzer size check, local QA and portal upload with the user, ending in a pass/fail report. Invoked manually with /crazygames-release.
 disable-model-invocation: true
 argument-hint: "[notes, e.g. mobile or skip-compile]"
 ---
@@ -11,8 +11,8 @@ Arguments: `$ARGUMENTS` (optional). If it mentions "mobile", treat mobile suppor
 (initial load < 20 MB, "Runs on mobile web" ticked). If it says "skip-compile", skip step 2 and
 mark it NOT RUN in the report.
 
-CrazyGames facts here come from the `webgl-performance` skill and its references (verified against
-the SDK source). Portal policies not visible in code (ad frequency, QA rules) live at
+CrazyGames facts come from `platform-integration/references/crazygames.md` and `webgl-performance`
+(verified against the SDK source). Portal policies not visible in code (ad frequency, QA rules) live at
 docs.crazygames.com; point the user there rather than inventing rules.
 
 Copy this checklist into your reply and tick items as you go:
@@ -42,7 +42,7 @@ Exit 0 = no FAIL, 1 = at least one FAIL. Output is one line per check:
 | PlatformConfig | `platform` is not the `CrazyGames` enum index | Select it with `Tools/Template/Platform/CrazyGames` (sets `Assets/_Project/ScriptableObjects/Config/PlatformConfig.asset` and the define) |
 | Gameplay start/stop | no game code calls `GameplayStateManager.Instance.BeginGameplay/EndGameplay()`, or code calls `Game.GameplayStart/Stop()` directly | Call them at level start and game over (`gameplay-feature` skill; pauses are reported automatically); the platform `GameplayStart` also marks the end of QA's load-size measurement |
 | UnityEditor | `UnityEditor` referenced outside `#if UNITY_EDITOR`/`Editor/` | Guard it; the WebGL player build fails otherwise |
-| Debug input | raw `Keyboard.current`/`Input.GetKey` outside `Testing/` | Confirm it is gameplay input, not a cheat/debug key (expected: `UIManager` Back/Escape, `GameplayController` Space to score) |
+| Debug input | raw `Keyboard.current`/`Input.GetKey` outside `Testing/` | Confirm it is gameplay input, not a cheat/debug key (expected: `UIManager` Back/Escape and the game's own gameplay keys) |
 | CrazyGamesSettings | file missing | Re-import the SDK; `pauseGameDuringAd` is reported as INFO only (`PauseManager` pauses ads either way) |
 
 `BuildValidator` (`Assets/_Project/Scripts/Editor/BuildValidator.cs`, also `Tools/Build/Validate Build Settings`) repeats the blocking checks before every player build: index 0 must be `00_Bootstrap`, no test scene or harness, `PlatformConfig.Platform` must match the target and its `PLATFORM_X` define, and the CrazyGames SDK must not be compiled into another platform's WebGL build. It warns when the profile define is missing, and after the build when the other profile's physics module is included.
@@ -62,7 +62,7 @@ to close it or to confirm the Console shows no red errors. Fix errors and rerun 
 
 Give these to the user in Turkish, numbered, and wait for their results:
 
-3. **Release Build**: open the project in Unity 6000.3.21f1. If mobile matters, open
+3. **Release Build**: open the project in the Unity version from `ProjectSettings/ProjectVersion.txt`. If mobile matters, open
    `CrazySDK/Go to Build` and tick "Runs on mobile web". Save the open scene, then
    `CrazySDK/Release Build`. It deletes and rebuilds `Builds/CrazyGamesRelease`, runs several full
    player builds (plus ASTC and, with mobile, 512/1024 MB memory variants) and can take a long

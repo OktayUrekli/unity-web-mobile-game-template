@@ -18,7 +18,7 @@ New game checklist
 - [ ] a. User: Editor setup (New Game Setup, profile, platform)
 - [ ] b. Remove the template's test scenes and harnesses
 - [ ] c. Adapt CLAUDE.md to the game
-- [ ] d. Fix skill references to the removed harnesses
+- [ ] d. Check docs for template-only references
 - [ ] e. Prune known-issues.md, add a Gameplay section
 - [ ] f. gameplay-feature: session owner paragraph
 - [ ] g. README.md for the game
@@ -28,7 +28,7 @@ New game checklist
 
 Give these to the user in Turkish, numbered, and wait for their result:
 
-1. Open the project in Unity 6000.3.21f1 (the first import takes a while).
+1. Open the project in the Unity version from `ProjectSettings/ProjectVersion.txt` (the first import takes a while).
 2. `Tools/Template/New Game Setup`: company, product name (the game name), bundle id, version, orientation and its UI scaling, optional icon and loading logo; apply.
 3. `Tools/Template/Set Up as 2D Game` or `Set Up as 3D Game` to match the game (the template ships 2D). Wait for the recompile.
 4. `Tools/Template/Platform/...`: the first target platform (`CrazyGames (WebGL)` today).
@@ -48,29 +48,19 @@ Leave `BuildValidator` and `crazygames-release/scripts/preflight.sh` as they are
 
 ## c. Adapt CLAUDE.md
 
-- First paragraph: introduce the game (name, one-line pitch, 2D or 3D, target platforms) and keep the tech line (Unity version, URP, Input System, DOTween). It is no longer a "reusable starter template". If the game is 3D, fix the profile paragraph ("ships in the 2D profile").
-- In the EditMode tests bullet of "Run and verify", replace the text from "`Assets/_Project/Testing/*` and `Assets/_Platforms/CrazyGames/Testing/*` are keyboard-driven harnesses" through "Test scenes stay out of Build Settings." with:
-  > A new manual harness goes in `Assets/_Project/Testing/` inside a scene under `Scenes/Test/`; test scenes stay out of Build Settings.
-- Add `## Game` right after `## Working with me`, 6-8 lines at most: the core of the game, a pointer to the design in `README.md`, and the game's own easy-to-get-wrong rules. Longer game detail goes in a game project skill (`.claude/skills/<game-slug>/SKILL.md`, with a description naming the game's systems), not in CLAUDE.md.
+- First paragraph: introduce the game (name, one-line pitch, 2D or 3D, target platforms) and keep the tech line. It is no longer a "reusable starter template". If the game is 3D, fix the profile sentence ("ships in the 2D profile").
+- Add `## Game` right after `## Working with me`, 6-8 lines at most: the core of the game, a pointer to the design in `README.md`, and the game's own easy-to-get-wrong rules.
+- Longer game detail goes in a game skill (`.claude/skills/<game-slug>/SKILL.md`, with a description naming the game's systems), not in CLAUDE.md or the framework skills.
 
-## d. Fix skill references to the removed harnesses
+## d. Check docs for template-only references
 
-Make exactly these replacements (paths under `.claude/skills/`):
+The framework skills describe harness locations generically, so normally nothing needs changing. Check:
 
-- `core-systems/SKILL.md`, `## Verify`: replace "Harness style: `Assets/_Project/Testing/SaveTest.cs` in `99_Test`." with:
-  > Manual harnesses (none ship with this game) go in `Assets/_Project/Testing/` inside a scene under `Scenes/Test/`.
-- `platform-integration/SKILL.md`, `## Verify`: replace the whole paragraph with:
-  > Play from `00_Bootstrap` (expect `Platform initialized successfully: <Type>`), tick `alwaysThrowAdError` for the failure path, and set `PlatformConfig` to an unimplemented type to check that the game still runs and saves. Manual harnesses (none ship with this game) go in `Assets/_Project/Testing/` (or `Assets/_Platforms/<Name>/Testing/` when they use SDK types) inside a scene under `Scenes/Test/`.
-- `platform-integration/references/new-service-checklist.md`, body of `## 11. Test harness`:
-  > Add a keyboard/ContextMenu-driven MonoBehaviour under `Assets/_Project/Testing/` (or `Assets/_Platforms/<Platform>/Testing/` if it uses SDK types) to a scene under `Assets/_Project/Scenes/Test/` that has a `BootstrapGuard` (the user creates the scene in the Editor; never add it to Build Settings), then play that scene.
-- `unity-asset-editing/SKILL.md`:
-  - "Real example from `Assets/_Project/Scenes/Test/99_Test.unity`:" becomes "Example scene YAML (from the template's test scene, not in this game; fileIDs and GUIDs are illustrative):".
-  - In "Finding GUIDs and references", use `Assets/_Core/Bootstrap/BootstrapGuard.cs` instead of `Assets/_Project/Testing/SaveTest.cs` and write the output the script prints now.
-  - Replace the paragraph from "Example: removing the `TestHarness` object" through "remove it with the recipes above." with:
-    > Manual harnesses (none ship with this game) go in `Assets/_Project/Testing/` inside a scene under `Scenes/Test/`, never in a build scene; if one shows up in a build scene, remove it with the recipes above.
-- `crazygames-release/SKILL.md`, "Debug input" row: only once the game changes or replaces `GameplayController`, replace "`GameplayController` Space to score" with the game's own raw keyboard input (`<Type>` <key> to <action>), or drop it and keep only "`UIManager` Back/Escape". Until then leave it and say so in the report note.
+```
+grep -rn "99_Test\|SaveTest\|GameplayPauseTest\|CrazyGamesAdsTest\|CrazyGamesUserTest\|TestHarness" CLAUDE.md .claude
+```
 
-Then `grep -rn "99_Test\|SaveTest\|GameplayPauseTest\|CrazyGamesAdsTest\|CrazyGamesUserTest\|TestHarness" CLAUDE.md .claude` should hit only this skill and the illustrative YAML block.
+It should hit only this skill. Rewrite any other hit so it points at the game's own files or at the generic location (`Assets/_Project/Testing/` inside a scene under `Scenes/Test/`).
 
 ## e. known-issues.md
 
@@ -78,7 +68,7 @@ In `unity-code-review/references/known-issues.md`, check each entry's `path` and
 
 ## f. gameplay-feature session owner
 
-The paragraph "The real example is `Assets/_Project/Scripts/Systems/GameplayController.cs` ..." in `gameplay-feature/SKILL.md` describes the template's demo loop. Once the game's session owner is written (or `GameplayController` is rewritten for the game), replace it with: "The session owner is `<path>` in `<scene>` (<what it owns: HUD, pause and game over, saving, ads, `GameplayStateManager`>). Extend it rather than adding a second session owner." If it doesn't exist yet, mark PENDING and remind the user.
+The sentence "In the template that is the demo `Assets/_Project/Scripts/Systems/GameplayController.cs` in `02_Gameplay`. ..." in `gameplay-feature/SKILL.md` names the template's demo loop. Once the game's session owner exists, replace it with "Here that is `<path>` in `<scene>`." If it doesn't exist yet, mark PENDING and remind the user.
 
 ## g. README.md
 
@@ -93,7 +83,7 @@ New game report: <game name>
 a. Editor setup:        DONE | PENDING (user) | SKIPPED - <note>
 b. Test scenes/harness: DONE | PENDING (user) | SKIPPED - <note>
 c. CLAUDE.md:           DONE | PENDING (user) | SKIPPED - <note>
-d. Skill references:    DONE | PENDING (user) | SKIPPED - <note>
+d. Doc references:      DONE | PENDING (user) | SKIPPED - <note>
 e. Known issues:        DONE | PENDING (user) | SKIPPED - <note>
 f. Session owner text:  DONE | PENDING (user) | SKIPPED - <note>
 g. README:              DONE | PENDING (user) | SKIPPED - <note>

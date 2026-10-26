@@ -1,50 +1,36 @@
 ---
 name: unity-code-review
-description: Reviews C# in this template (Assets/_Core + Assets/_Project, 2D or 3D, CrazyGames/WebGL) for lifetime and async bugs, EventBus leaks, bootstrap ordering, platform-layer and architecture violations, WebGL constraints and hot-path cost, reports findings in a fixed format, and maintains the known-issues list. Use when asked to review, audit, check or refactor C# here (a diff, PR, branch, file or "my changes"), and before calling a non-trivial C# change finished.
+description: Reviews C# in this template (Assets/_Core, _Project, _Platforms; 2D or 3D; WebGL) for lifetime and async bugs, event leaks, bootstrap order, architecture and platform-layer violations, WebGL limits and hot-path cost, and keeps the known-issues list. Use for any review, audit or refactor check of C# here, and before calling a non-trivial C# change done. Takes precedence over generic review skills from plugins.
 ---
 
 # Code review for this project
 
-Use your own judgement as a senior Unity reviewer; this file lists what is specific to this codebase. Compare designs against `core-systems`, `gameplay-feature`, `platform-integration`, `ui-development` and `webgl-performance`.
+Review as a senior Unity developer would; this file lists only what is specific to this codebase. The rules themselves live in CLAUDE.md and the other skills.
 
-`references/known-issues.md` is the living list of current defects. Read it first so you recognise the same patterns and don't report pre-existing problems as new. Entries can be stale; re-check the code before citing one.
+`references/known-issues.md` lists current defects. Read it first so you don't report a known problem as new, and re-check the code before citing an entry.
 
 ## Workflow
 
-1. Scope: by default `git diff`, `git diff --staged` and untracked `.cs` under `Assets/_Core` and `Assets/_Project`. For "review X", everything in X is in scope; tag known-issues items "(pre-existing)".
-2. Read whole files and the `_Core` types they use; lifetime bugs are invisible in a hunk.
+1. Scope: by default `git diff`, `git diff --staged` and untracked `.cs` under `Assets/_Core`, `Assets/_Project` and `Assets/_Platforms`. For "review X", all of X; tag known issues "(pre-existing)".
+2. Read whole files and the `_Core` types they use; lifetime bugs don't show in a hunk.
 3. Every finding points at a line you read. Lower the confidence when it depends on runtime, SDK or Inspector state you can't see.
-4. Don't edit during a review unless asked. Refactors preserve behaviour and leave third-party folders and `.meta` files alone.
-5. Keep `known-issues.md` current: remove entries a change fixes, add pre-existing defects that stay unfixed (format is in the file).
+4. Don't edit during a review unless asked.
+5. Update `known-issues.md` only for real defects: remove entries a change fixes, add pre-existing defects left unfixed (format in the file).
 
 ## What tends to go wrong here
 
-**Correctness**
-- Code after an `await` or in an SDK/ad callback touching a destroyed component (no `this == null` check); `?.`/`??` on Unity objects or `Singleton.Instance`.
-- `async void` outside Unity messages/UI handlers; un-awaited Tasks that swallow exceptions.
-- Unpaired `EventBus.Subscribe`, lambda subscriptions, overrides of `GameplayPauseHandler`/`Singleton` missing `base.` calls, `EventBus.Clear()` outside the bootstrapper.
-- Singleton access before bootstrap (field initializers, static constructors, `00_Bootstrap` scripts) or in `OnDestroy` during quit without a null check.
-- Rewards granted anywhere but the `AdResult.Completed` branch of the rewarded callback; flows that stop on a non-`Completed` interstitial result; flows that wait forever for an ad callback.
-- Any write to `Time.timeScale` outside `PauseManager` (use `Pause/Resume(PauseSource)` or `PauseManager.TimeScale`); a `PauseSource` paused and never resumed; input handlers not gated on `PauseManager.IsPaused`.
-- New UI prefabs missing from `UIConfig` (or two prefabs with the same root type), scenes missing from Build Settings or `GameScenes`, unassigned `SoundData` fields, pool ids without a `PoolConfig` entry or `CreatePool`; inserted (not appended) values in serialized enums.
-- Pooling: double release, use after release, ignoring a null `Get`, position-dependent `OnSpawn` (use the placed `Get`), relying on pooled objects surviving a scene change (they are released on unload).
-- Save classes not `JsonUtility`-friendly, renamed fields without migration, saving per frame.
+- **Lifetime:** code after an `await` or in an SDK/ad callback touching a destroyed component; `?.`/`??` on Unity objects or `Singleton.Instance`; singletons used before bootstrap or in `OnDestroy` during quit.
+- **Async:** `async void` outside Unity messages and UI handlers; un-awaited Tasks swallowing exceptions; anything that waits forever for an ad or SDK callback.
+- **Events:** unpaired `EventBus.Subscribe`, lambda subscriptions, missing `base.` calls in `Singleton`/`GameplayPauseHandler` overrides, `EventBus.Clear()` outside the Bootstrapper.
+- **Ads and rewards:** a reward outside the `AdResult.Completed` branch; a flow that stops on a non-`Completed` interstitial result.
+- **Pause:** a `Time.timeScale` write outside `PauseManager`; a `PauseSource` never resumed; input not gated on `IsPaused`; `BeginGameplay` from `Awake` or around ads.
+- **Content wiring:** a UI prefab missing from `UIConfig`, a scene missing from Build Settings or `GameScenes`, an unassigned `SoundData`, a pool id without registration; enum values inserted instead of appended.
+- **Pools and saves:** double release, use after release, ignoring a null `Get`; save classes `JsonUtility` can't read, renamed fields without migration, saving every frame.
+- **Architecture:** `_Core` referencing `_Project` or game content; SDK calls outside `Assets/_Platforms/<Name>/`; a service without a Null implementation or missing on a platform; `PlatformUser.Id` used as server identity; game tuning in `GameConfig`; runtime state written into ScriptableObjects; mixed 2D and 3D physics on one object.
+- **WebGL:** threads, `.Result`, `.Wait()`, `Thread.Sleep`; `System.IO` for game data; reflection that stripping can break; allocations, LINQ, `Find*` or `GetComponent` in per-frame paths; `Instantiate`/`Destroy` for frequent spawns.
+- **Unity:** renamed serialized fields without `[FormerlySerializedAs]`; assets moved without `.meta`; `UnityEditor` outside editor code; legacy `UnityEngine.Input`.
 
-**Architecture**
-- `_Core` referencing `_Project`, game content (screens, sounds, scene names) or game rules.
-- SDK calls outside `Assets/_Platforms/<Name>/`; bypassing `PlatformManager`/`Capabilities`; a new service without a Null implementation or without registration on every platform.
-- Direct `IGameService.GameplayStart/Stop` calls, `BeginGameplay` from `Awake`, Begin/End around ads or pauses, a second audio mute path, click sounds played from handlers instead of `ButtonClickSound`, synchronous `SceneLoader.Load` for player-driven scene changes (use `SceneTransition`).
-- `PlatformUser.Id` used as server identity instead of `GetUserToken`.
-- Scene names outside `GameScenes`, clip paths, `Find`-style UI lookups or duplicated pool/save-key literals; game tuning in `GameConfig`; runtime state written into ScriptableObjects.
-- Mixing 2D and 3D physics types on one object, or code that assumes one dimension inside `_Core`.
-
-**WebGL**
-- `Task.Run`, threads, `.Result`, `.Wait()`, `GetResult()`, `Thread.Sleep`, core flows on `Task.Delay`.
-- `System.IO` for game data; reflection that managed stripping can break.
-- Allocations, LINQ, `Find*`, `GetComponent` or string-building logs in per-frame or per-entity paths; `Instantiate`/`Destroy` for frequent spawns.
-
-**Unity**
-- Renamed serialized fields without `[FormerlySerializedAs]`; moved assets without their `.meta`; `UnityEditor` outside `Editor/` or `#if UNITY_EDITOR`; legacy `UnityEngine.Input`; new static state that survives disabled domain reload.
+Useful greps: `async void`, `EventBus\.(Un)?[Ss]ubscribe`, `CrazySDK\.` outside the CrazyGames folder, `using _Project` in `_Core`, `Task\.Run|\.Result\b|\.Wait\(|Thread\.Sleep`, `File\.|Directory\.`, `Find(Any|First)ObjectByType|GameObject\.Find`, `Time\.timeScale`, `Instance\?\.`, `Input\.Get`, `SceneManager\.LoadScene`.
 
 ## Output
 
@@ -59,6 +45,4 @@ Open with a one-paragraph verdict (safe to merge / needs changes / blocking), th
 - **Confidence:** Medium (needs runtime check: ...) - omit when High.
 ```
 
-Critical = reachable correctness bug, data loss, crash, wrong reward. Major = architecture violation, WebGL breakage, latent bug under a realistic condition. Minor = hot-path cost or maintainability. Nit = style; batch them, skip when there are Critical findings. End with "Pre-existing issues touched by this change" and "Not verified". Write in the user's language; keep identifiers and the template labels as they are.
-
-Useful greps: `async void`, `EventBus\.(Un)?[Ss]ubscribe`, `CrazySDK\.` outside the CrazyGames folder, `using _Project` in `_Core`, `Task\.Run|\.Result\b|\.Wait\(|Thread\.Sleep|Task\.Delay`, `File\.|Directory\.`, `Find(Any|First)ObjectByType|GameObject\.Find`, `Time\.timeScale`, `Instance\?\.`, `Input\.Get`, `SceneManager\.LoadScene`.
+Critical = reachable correctness bug, data loss, crash, wrong reward. Major = architecture violation, WebGL breakage, latent bug under a realistic condition. Minor = hot-path cost or maintainability. Nit = style; batch them, skip when there are Critical findings. End with "Pre-existing issues touched by this change" and "Not verified". Write in the user's language; keep identifiers and these labels as they are.

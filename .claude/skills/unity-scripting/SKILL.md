@@ -1,46 +1,44 @@
 ---
 name: unity-scripting
-description: C# conventions and Unity pitfalls for this template (2D and 3D) - file placement and namespaces, field naming, serialization, Unity fake-null, 2D vs 3D physics, Input System, Task-based async on WebGL, editor-only guards. Use when writing, editing or debugging any C# script in this project, even a one-line fix.
+description: C# conventions and Unity pitfalls in this template (2D and 3D) - placement and namespaces, fake null, lifetime after await, WebGL threading, serialization, 2D vs 3D physics, Input System, editor-only code. Use when writing, editing or debugging C# here, even a one-line fix.
 ---
 
 # Unity C# in this project
 
-The other project skills (`core-systems`, `gameplay-feature`, `ui-development`, `platform-integration`) build on this one.
+Naming, async and `timeScale` rules are in CLAUDE.md. The other project skills build on this one.
 
-## Placement and style
+## Placement
 
-- `Assets/_Core/<Folder>/` → namespace `_Core.<Folder>`; framework only, never `using _Project...`.
+- `Assets/_Core/<Folder>/` → `_Core.<Folder>`; framework only, never `using _Project...`.
 - `Assets/_Project/<Folder>/` → `_Project.<Folder>`, dropping `Scripts` (`_Project/Scripts/Gameplay/Enemy.cs` → `_Project.Gameplay`).
-- `Assets/_Platforms/<Name>/` → `_Platforms.<Name>.*`: SDK bridges only (Assembly-CSharp); see `platform-integration`.
-- Fields: `[SerializeField] private float moveSpeed`; private `_rigidbody`; constants `PascalCase`. Public fields only on plain config/data types (`GameConfig`, `PoolData`, `SaveData` subclasses), matching their existing style.
-- XML `/// <summary>` on public types and members; code and comments in English.
-- Don't hand-edit `.unity`/`.prefab`/`.asset`/`.meta` unless asked; see `unity-asset-editing`.
+- `Assets/_Platforms/<Name>/` → `_Platforms.<Name>.*`: SDK bridges only (`platform-integration`).
+- Public fields only on plain data types (`GameConfig`, `PoolData`, `SaveData` subclasses), matching their style.
+- Scenes, prefabs, assets and `.meta` files: `unity-asset-editing`.
 
-## Pitfalls worth remembering
+## Pitfalls
 
-- **Fake null.** Destroyed `UnityEngine.Object`s are `== null`, but `?.`, `??`, `is null` bypass that. Use `!= null` on Unity objects and on `Singleton<T>.Instance`.
-- **Lifetime after await/callbacks.** A `Task` or SDK callback can complete after the component is destroyed (scene change during an ad). Check `if (this == null) return;` after each `await` and at the top of callbacks.
+- **Fake null.** Destroyed `UnityEngine.Object`s are `== null`, but `?.`, `??` and `is null` skip that check. Use `!= null` on Unity objects and on `Singleton<T>.Instance`.
+- **Lifetime.** A `Task` or SDK callback can finish after its component is destroyed (a scene change during an ad). Check `if (this == null) return;` after each `await` and at the top of callbacks.
 - **`async void`** only for Unity messages and UI handlers, wrapped in `try/catch`.
-- **WebGL is single-threaded.** No `Task.Run`, threads, `.Result`, `.Wait()`, `Thread.Sleep`. Poll frames with `await Task.Yield()` and time with `Time.realtimeSinceStartup` (pauses and ads set `timeScale` to 0).
+- **WebGL is single-threaded.** Poll with `await Task.Yield()`; measure time with `Time.realtimeSinceStartup`, since pauses and ads set `timeScale` to 0.
 - **Serialization.** Rename serialized fields with `[FormerlySerializedAs]`; append enum values, never insert.
-- **Overrides.** Call `base.Awake/OnEnable/OnDisable/OnDestroy` when overriding `Singleton<T>` or `GameplayPauseHandler`; after `base.Awake()` in a singleton, bail out `if (IsDuplicate)`.
-- **Time scale.** Never write `Time.timeScale`: `PauseManager` owns it (pause sources, `PauseManager.TimeScale` for slow motion) and undoes other writes.
-- **Subscriptions.** Pair every subscribe with an unsubscribe in the mirrored method (`OnEnable`/`OnDisable`, or `Init`/`OnDestroy` for persistent managers). Lambdas can't be unsubscribed.
-- **Editor code** (`UnityEditor`) belongs in the `_Core.Editor` / `_Project.Editor` assemblies (`Assets/_Core/Editor/`, `Assets/_Project/Scripts/Editor/`) or inside `#if UNITY_EDITOR`, or the WebGL build fails. Other `Editor/` folders under `_Core`/`_Project` are not editor-only (asmdefs override the special folder).
-- **Hot paths** matter more on WebGL (stop-the-world GC): cache lookups, avoid per-frame allocations, pool frequent spawns.
+- **Overrides.** Call `base.Awake/OnEnable/OnDisable/OnDestroy` when overriding `Singleton<T>` or `GameplayPauseHandler`.
+- **Subscriptions.** Pair every subscribe with an unsubscribe in the mirrored method (`OnEnable`/`OnDisable`, or `Init`/`Shutdown` for managers). Lambdas can't be unsubscribed.
+- **Editor code** (`UnityEditor`) goes in `Assets/_Core/Editor/` or `Assets/_Project/Scripts/Editor/`, or inside `#if UNITY_EDITOR`; otherwise the player build fails.
+- **Hot paths** matter more on WebGL (stop-the-world GC): cache lookups, no per-frame allocations, pool frequent spawns.
 
 ## 2D or 3D
 
-The template serves both. Use the physics family the scene and prefab already use and never mix them on one object: `Rigidbody2D`/`Collider2D`/`OnTriggerEnter2D`/`Physics2D` versus `Rigidbody`/`Collider`/`OnTriggerEnter`/`Physics`. When there's no existing scene to follow, ask or pick from the user's description and say which. Unity 6 names apply to both: `linearVelocity`, `linearDamping`, `angularDamping` (not `velocity`/`drag`). The active profile is the `GAME_2D`/`GAME_3D` define; a 3D game must first run `Tools/Template/Set Up as 3D Game` (see CLAUDE.md), since the 2D profile has 3D physics on Script simulation.
+Use the physics family the scene and prefab already use, and never mix them on one object (`Rigidbody2D`/`Collider2D`/`OnTriggerEnter2D` versus `Rigidbody`/`Collider`/`OnTriggerEnter`). With nothing to follow, pick from the user's description and say which. Unity 6 names: `linearVelocity`, `linearDamping`, `angularDamping`. The active profile is the `GAME_2D`/`GAME_3D` define; a 3D game first runs `Tools/Template/Set Up as 3D Game`, since the 2D profile runs 3D physics on Script simulation. NavMesh (`com.unity.ai.navigation`) isn't installed; add it if a game needs it.
 
 ## Input
 
-New code uses the Input System only (`InputSystem.actions.FindAction("Player/Move")` cached in `Awake`, or a serialized `InputActionReference`). The project-wide asset is `Assets/Settings/InputSystem_Actions.inputactions` (maps `Player`, `UI`; schemes Keyboard&Mouse, Gamepad, Touch, Joystick, XR). Input callbacks keep firing at `timeScale = 0`, so gate them on your pause state. Escape/Back belongs to `UIManager` only.
+Input System only: `InputSystem.actions.FindAction("Player/Move")` cached in `Awake`, or a serialized `InputActionReference`. The project-wide asset is `Assets/Settings/InputSystem_Actions.inputactions`. Input callbacks keep firing at `timeScale = 0`. Escape/Back belongs to `UIManager`.
 
 ## Async
 
-`System.Threading.Tasks` with `TaskCompletionSource<T>` around callback APIs, `TrySet*` because SDKs may call back twice. No UniTask, no coroutine-based framework code.
+`TaskCompletionSource<T>` around callback APIs, with `TrySet*` because SDKs may call back twice.
 
 ## Done
 
-Compile with `unity-verify`, and tell the user which components, Inspector fields or assets they must set up in the Editor.
+Compile with `unity-verify`, then tell the user which components, Inspector fields or assets they must set up in the Editor.

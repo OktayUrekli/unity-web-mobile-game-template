@@ -121,6 +121,7 @@ UI hide features that can't work.
 
 ## 11. Test harness
 
-Add a keyboard/ContextMenu-driven MonoBehaviour under `Assets/_Project/Testing/` (or `Assets/_Platforms/<Platform>/Testing/` if it uses SDK types) following
-`CrazyGamesUserTest`, add it to the `TestHarness` object in `Assets/_Project/Scenes/Test/99_Test.unity`
-(not a build scene) and play that scene (its `BootstrapGuard` bootstraps first).
+A keyboard- or ContextMenu-driven MonoBehaviour under `Assets/_Project/Testing/` (or
+`Assets/_Platforms/<Platform>/Testing/` if it uses SDK types), in a test scene under
+`Assets/_Project/Scenes/Test/` that has a `BootstrapGuard` and stays out of Build Settings. Play that
+scene.

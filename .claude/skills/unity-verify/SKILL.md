@@ -1,6 +1,6 @@
 ---
 name: unity-verify
-description: Verifies that this Unity project's C# code compiles, and optionally that EditMode tests pass - through the connected Unity MCP when the Editor is open, otherwise by running the Editor in batch mode (scripts/verify.ps1). Use after any change to a .cs file, .asmdef, package manifest or hand-edited asset, before reporting a task as done, when the user asks "does it compile", "check for errors", "run the tests", "verify my changes", or when a compile error or CS#### code is mentioned.
+description: Verifies that C# compiles and EditMode tests pass - through Unity MCP when the Editor is open, scripts/verify.ps1 when it is closed, "compile NOT VERIFIED" when there is no Unity. Also where tests and manual test harnesses go. Use after any change to .cs, .asmdef, the package manifest or a hand-edited asset, before calling work done, and whenever compile errors, CS#### codes or tests come up.
 ---
 
 # Unity verify (batch-mode compile and EditMode tests)
@@ -99,6 +99,12 @@ with "project is open in the Unity Editor". Never kill Unity processes yourself;
 
 If the user prefers to keep the Editor open, ask them to check the Console after Unity recompiles
 and paste any red errors; treat that as the verify result.
+
+## Where tests go
+
+- EditMode tests cover `_Core` logic: `Assets/_Core/Tests/Editor` (assembly `_Core.Tests.Editor`). Internal seams for them: `SaveManager.Init(storage, config)`, `Singleton<T>.SetInstanceForTests`, `PlatformFactory.Unregister`, `EventBus.SubscriberCount<T>`, and `Shutdown()` on managers that subscribe in `Init`.
+- Test-only MonoBehaviours go in `Assets/_Core/Tests/Runtime` (`_Core.Tests.Runtime`): Unity can't attach components from an Editor-only assembly.
+- Gameplay, UI and SDK behaviour are checked by hand: keyboard- or ContextMenu-driven harnesses in `Assets/_Project/Testing/` (or `Assets/_Platforms/<Name>/Testing/` when they use SDK types), placed in test scenes under `Assets/_Project/Scenes/Test/`. Test scenes have a `BootstrapGuard` and stay out of Build Settings (`BuildValidator` blocks them).
 
 ## What this does not verify
 

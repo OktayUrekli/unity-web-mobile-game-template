@@ -33,7 +33,7 @@ Read `diff -u <template file> <game file>` for each differing file. The clone ha
 
 | Class | Typical signs |
 |---|---|
-| game-specific (leave) | the game's own skill or text, including what `/new-game-from-template` changed (harness references, the known-issues `Gameplay` section, the session-owner paragraph); a template file the game deleted on purpose |
+| game-specific (leave) | the game's own skill or text, including what `/new-game-from-template` changed (the known-issues `Gameplay` section, the session-owner sentence in `gameplay-feature`); a template file the game deleted on purpose |
 | game improvement (move to template) | a game commit changed `_Core` or a skill rule in a way that holds for every game: a bug fix, a generic API, a new pitfall |
 | template newer (move to game) | the game never touched the file and the template's copy differs; a file only in the template that the game did not delete |
 | unsure | both sides changed the same file, or the intent is unclear |
