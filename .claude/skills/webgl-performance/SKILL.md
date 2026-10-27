@@ -1,6 +1,6 @@
 ---
 name: webgl-performance
-description: Builds, download size, memory and browser behaviour for this template (2D or 3D) - CrazySDK Development/Release Build and Analyzer, Build Profiles (Web and Android), size limits, compression, heap and GC, web saves and audio. Use for builds, browser-only bugs, build size, load time, memory, stutter, or web audio and saves. Takes precedence over the plugin skill optimize-web, because the CrazySDK builder overrides Player Settings.
+description: Builds, download size, memory and browser behaviour - CrazySDK builds and Analyzer, Build Profiles (Web and Android), size limits, heap and GC, web saves and audio. Use for builds, browser-only bugs, size, load time, memory or stutter; takes precedence over the plugin skill optimize-web, because the CrazySDK builder overrides Player Settings.
 ---
 
 # Builds, size and the browser

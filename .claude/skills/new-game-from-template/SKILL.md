@@ -9,7 +9,7 @@ argument-hint: "[game name]"
 
 Game name: `$ARGUMENTS`. If it is empty, or the one-line pitch and 2D/3D choice are unknown, ask for them first. Run this once, in a new repository created from the template, before writing gameplay. If `git remote get-url origin` points at `unity-web-mobile-game-template`, stop: that is the template itself.
 
-Steps b-g don't wait for step a; do them while the user works in the Editor. Ask before any deletion.
+Steps b-f don't wait for step a; do them while the user works in the Editor. Ask before any deletion.
 
 Copy this checklist into your reply and tick items as you go:
 
@@ -20,8 +20,7 @@ New game checklist
 - [ ] c. Adapt CLAUDE.md to the game
 - [ ] d. Check docs for template-only references
 - [ ] e. Prune known-issues.md, add a Gameplay section
-- [ ] f. gameplay-feature: session owner paragraph
-- [ ] g. README.md for the game
+- [ ] f. README.md for the game
 ```
 
 ## a. Editor setup (user)
@@ -64,13 +63,9 @@ It should hit only this skill. Rewrite any other hit so it points at the game's 
 
 ## e. known-issues.md
 
-In `unity-code-review/references/known-issues.md`, check each entry's `path` and type still exist in the game and remove entries for files or objects the game removed (for example the `01_MainMenu` CrazyBanner entry if the game replaced that scene). `_Core` entries stay. Add `## Gameplay` (and its Contents line) for defects in the game's own code, same entry format, starting with "None known yet."
+In `unity-code-review/references/known-issues.md`, check each entry's `path` and type still exist in the game and remove entries for files or objects the game removed (for example the `01_MainMenu` CrazyBanner entry if the game replaced that scene). `_Core` entries stay. Add `## Gameplay` for defects in the game's own code, same entry format, starting with "None known yet."
 
-## f. gameplay-feature session owner
-
-The sentence "In the template that is the demo `Assets/_Project/Scripts/Systems/GameplayController.cs` in `02_Gameplay`. ..." in `gameplay-feature/SKILL.md` names the template's demo loop. Once the game's session owner exists, replace it with "Here that is `<path>` in `<scene>`." If it doesn't exist yet, mark PENDING and remind the user.
-
-## g. README.md
+## f. README.md
 
 `README.md` is the human-facing overview, in Turkish. Remind the user (or draft it if asked) to rewrite it for the game: name, short pitch, controls, the game's design, and only the template setup steps the game still needs. Drop the "Test sahneleri" section and the `99_Test` / `99_Test3D` and "test araçları" mentions under "Klasör yapısı". Natural, plain Turkish that doesn't read as AI-written.
 
@@ -85,6 +80,5 @@ b. Test scenes/harness: DONE | PENDING (user) | SKIPPED - <note>
 c. CLAUDE.md:           DONE | PENDING (user) | SKIPPED - <note>
 d. Doc references:      DONE | PENDING (user) | SKIPPED - <note>
 e. Known issues:        DONE | PENDING (user) | SKIPPED - <note>
-f. Session owner text:  DONE | PENDING (user) | SKIPPED - <note>
-g. README:              DONE | PENDING (user) | SKIPPED - <note>
+f. README:              DONE | PENDING (user) | SKIPPED - <note>
 ```

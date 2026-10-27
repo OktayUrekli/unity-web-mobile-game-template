@@ -1,6 +1,6 @@
 ---
 name: core-systems
-description: Design and traps of the framework in Assets/_Core (bootstrap, managers, EventBus, pause and gameplay state, save, settings, localization, audio, pools, scenes) and how game content plugs in without touching _Core. Use when adding or changing a manager, config, event, save data, setting, sound, pool or scene, or when game code calls these systems.
+description: Design and traps of the Assets/_Core framework (bootstrap, managers, EventBus, pause and gameplay state, save, settings, localization, audio, pools, scenes) and how game content plugs in. Use when adding or changing these systems or calling them from game code.
 ---
 
 # Core systems (Assets/_Core)
@@ -9,7 +9,7 @@ Read the source for signatures and order; this file keeps the design decisions a
 
 ## Bootstrap
 
-`Bootstrapper` (in `00_Bootstrap`) runs once per app start: it clears the `EventBus`, creates `PersistentRoot` and the managers in a fixed order, awaits platform init, then loads `SceneConfig.FirstScene` (in the Editor, the scene a `BootstrapGuard` came from) and calls `IGameService.GameReady()`. Each step has its own try/catch, so one failing manager doesn't stop the boot. The `LoadingScreen` prefab lives only in `00_Bootstrap`; a game changes its logo and name text.
+`Bootstrapper` (in `00_Bootstrap`) runs once per app start and creates every manager in code; read it for the order. Each step has its own try/catch, so one failing manager doesn't stop the boot. In the Editor a `BootstrapGuard` returns to the scene it came from. The `LoadingScreen` prefab lives only in `00_Bootstrap`; a game changes its logo and name text.
 
 - Platform services exist only after `PlatformManager.InitializeAsync()`; anything that reads them is created after it.
 - `EventBus.Clear()` wipes earlier subscriptions. Never load `00_Bootstrap` again at runtime.

@@ -1,11 +1,11 @@
 ---
 name: ui-development
-description: UI in this template - UIManager, UIScreen/UIPopup and the animated bases, UIConfig registration, popup stack and Back handling, button sounds, DOTween show/hide, UIParticle, safe area, CanvasScaler, localized TextMeshPro text. Use when a task touches Assets/_Core/UI or UI scripts and prefabs in Assets/_Project. Takes precedence over the plugin skills ui and ui-ugui, which only supplement low-level uGUI mechanics.
+description: UI in this project - UIManager, screens and popups, UIConfig registration, Back handling, button sounds, DOTween animation, UIParticle, safe area, scaling, localized TextMeshPro text. Use for any UI script or prefab; takes precedence over the plugin skills ui and ui-ugui, which only add low-level uGUI detail.
 ---
 
 # UI development
 
-Read `Assets/_Core/UI/UIManager.cs` for the API. Copy an existing screen/popup as the starting point: scripts in `Assets/_Project/Scripts/UI/` (`MainMenuScreen`, `SettingsPopup`, `PausePopup`, `LanguagePopup`, `ConfirmPopup`), prefabs in `Assets/_Project/Prefabs/UI/` (default dark theme, TMP LiberationSans). The look is the game's to design.
+Read `Assets/_Core/UI/UIManager.cs` for the API. Copy an existing screen or popup as the starting point: scripts in `Assets/_Project/Scripts/UI/`, prefabs in `Assets/_Project/Prefabs/UI/`. The look is the game's to design.
 
 ## How it fits together
 

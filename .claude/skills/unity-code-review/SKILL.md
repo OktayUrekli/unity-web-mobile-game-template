@@ -1,6 +1,6 @@
 ---
 name: unity-code-review
-description: Reviews C# in this template (Assets/_Core, _Project, _Platforms; 2D or 3D; WebGL) for lifetime and async bugs, event leaks, bootstrap order, architecture and platform-layer violations, WebGL limits and hot-path cost, and keeps the known-issues list. Use for any review, audit or refactor check of C# here, and before calling a non-trivial C# change done. Takes precedence over generic review skills from plugins.
+description: Reviews C# in this project (Assets/_Core, _Project, _Platforms) for lifetime, async, event, architecture, platform-layer and WebGL problems, and owns the known-issues list. Use for any review or audit of C# here; takes precedence over generic and plugin review skills.
 ---
 
 # Code review for this project
@@ -14,8 +14,7 @@ Review as a senior Unity developer would; this file lists only what is specific 
 1. Scope: by default `git diff`, `git diff --staged` and untracked `.cs` under `Assets/_Core`, `Assets/_Project` and `Assets/_Platforms`. For "review X", all of X; tag known issues "(pre-existing)".
 2. Read whole files and the `_Core` types they use; lifetime bugs don't show in a hunk.
 3. Every finding points at a line you read. Lower the confidence when it depends on runtime, SDK or Inspector state you can't see.
-4. Don't edit during a review unless asked.
-5. Update `known-issues.md` only for real defects: remove entries a change fixes, add pre-existing defects left unfixed (format in the file).
+4. A review changes no file unless asked. Put proposed `known-issues.md` changes in the report (an entry the change fixes, a pre-existing defect worth tracking); the file's header says when to apply them.
 
 ## What tends to go wrong here
 

@@ -2,23 +2,22 @@
 
 Reusable Unity 6 starter template for **2D and 3D** games (exact version in `ProjectSettings/ProjectVersion.txt`; URP, Input System, DOTween). Ships to **CrazyGames (WebGL)** today; Google Play and Yandex Games are stubbed and fall back to `NullPlatform`. `README.md` (Turkish) is the human-facing overview.
 
-The repo ships in the 2D profile (`GAME_2D`, `URP_2D`). Switch with `Tools/Template/Set Up as 2D Game` / `Set Up as 3D Game` and select the platform with `Tools/Template/Platform/...`, never by hand: these tools keep pipelines, defines, physics engines, packages and WebGL templates consistent. A new game starts with `/new-game-from-template`.
+The repo ships in the 2D profile (`GAME_2D`, `URP_2D`). Switch with `Tools/Template/Set Up as 2D Game` / `Set Up as 3D Game` and select the platform with `Tools/Template/Platform/...`, never by hand: these tools keep pipelines, defines, physics engines, packages and WebGL templates consistent.
 
 ## Working with me
 
 - Reply to the user in Turkish; give Editor steps in Turkish, numbered. Code, comments, skills and CLAUDE.md stay in English.
 - File and folder names use ASCII only (no Turkish characters).
 - README and other user-facing texts: natural, plain Turkish that doesn't read as AI-written.
-- A terse reply style from a plugin applies to chat only; files, comments, commits and PR text are written in full sentences.
 - When unsure about a destructive or wide change (deleting assets, editing scenes by hand, touching `_Core`), ask first.
 - Git: work on a branch in this checkout. No git worktrees: Unity keeps one Editor and one `Library/` per folder. Commit messages are one plain imperative sentence, like the history (no `feat:` prefix).
 
 ## Run and verify
 
 - Play from `Assets/_Project/Scenes/Bootstrap/00_Bootstrap.unity` (build index 0) or a scene with a `BootstrapGuard`. A new playable scene needs one; without it every manager `Instance` is null.
-- Verify every C# change with `unity-verify`: Unity MCP when the Editor is open, `verify.ps1` when it is closed, and "compile NOT VERIFIED" when there is no Unity (cloud sessions).
-- Automated tests cover only `_Core` logic (EditMode). Gameplay, UI, scenes and prefabs are checked by a compile plus Play Mode steps for the user.
-- Builds: Build Profiles never carry a Player Settings override (an active one replaces the template's defines); keystores never go in the repo. `BuildValidator` blocks a wrong scene list or platform before every build. Details: `webgl-performance`; release: `/crazygames-release`.
+- Check every C# change with `unity-verify`. Without Unity (cloud sessions) report "compile NOT VERIFIED", never "it compiles".
+- Automated tests are EditMode tests of plain logic (`_Core`, plus a game's own test assembly if it has one). Gameplay, UI, scenes and prefabs are checked by a compile plus Play Mode steps for the user.
+- Builds, size and Build Profiles: `webgl-performance`. CrazyGames release: `/crazygames-release`.
 
 ## Rules that are easy to get wrong
 
@@ -37,20 +36,21 @@ The repo ships in the 2D profile (`GAME_2D`, `URP_2D`). Switch with `Tools/Templ
 
 ## Skills and plugins
 
-Project skills in `.claude/skills/` hold the details; read the one that fits the task. They and this file win over any plugin skill on the same topic:
+Project skills in `.claude/skills/` hold this project's contracts and traps; read the one that fits and use your own judgement beyond it. They and this file win over any plugin skill, hook or style rule on the same topic; other plugin guidance (terse chat, thinking before coding, small diffs) applies on top.
 
-- Review: `unity-code-review`. Verification: `unity-verify`. Release: `/crazygames-release`. New game: `/new-game-from-template`, never a plugin's new-project flow.
+- Review: `unity-code-review`. Verification: `unity-verify`. New game: `/new-game-from-template`, never a plugin's new-project flow. Commits follow the git rule above, not a plugin's format.
 - A plugin skill that runs C# in the Editor through `unity-cli` runs it through Unity MCP (`Unity_RunCommand`) here. Never install `unity-cli` or `com.unity.pipeline`; never add LevelPlay or Unity Gaming Services.
 - Sprite atlases are hand-made `.spriteatlasv2` assets; don't add generated atlas scripts.
-- Other plugin skills (TMP, audio import, pixel perfect, tilemaps, shaders, debugging, writing) are fine where no project skill covers the topic.
-
-`/new-game-from-template`, `/template-sync` and `/crazygames-release` run only when the user asks.
+- A terse style applies to chat only; files, comments, commits and PR text use full sentences.
+- No plugin setup unless asked: no status-line offers, no init command that writes other tools' rule files (`AGENTS.md`, `.cursor/`, ...) into the repo.
 
 ## Keeping these docs small
 
-- Docs hold rules and traps the code doesn't show. Signatures, call order and file lists come from the code.
-- Each rule lives in one place; elsewhere, point to it.
-- Change a doc only when one of its statements becomes wrong or a new non-obvious rule appears. No history, dates, counts or changelogs.
-- Edit CLAUDE.md and skills by hand; never compress or auto-trim them with a tool.
-- `.claude/skills/unity-code-review/references/known-issues.md` lists current defects: add or remove an entry in the same change that introduces or fixes one.
-- A game's own rules go in a game skill (`/new-game-from-template`), not in the framework skills.
+Every game made from the template carries this file and the skills, and `/template-sync` compares them.
+
+- Docs hold rules and traps the code doesn't show; signatures, call order and file lists come from the code. Each rule lives in one place; elsewhere, point to it.
+- Fix a doc in the same change that makes it wrong. Add a rule only for a trap that would mislead the next session and that the code can't show; prefer fixing the cause (code, validator, tool). No one-off mistakes, history, dates, counts or changelogs.
+- A new line is a reason to cut another. CLAUDE.md stays under about 6 KB; a SKILL.md stays short, with rare detail in `references/`.
+- Edit docs by hand, never with a compress or trim tool, and name every doc change in your reply.
+- Framework skills name no game; a game's own rules go in CLAUDE.md `## Game` or a game skill.
+- Current defects: `.claude/skills/unity-code-review/references/known-issues.md` (its header says when to change it).

@@ -1,6 +1,6 @@
 ---
 name: unity-verify
-description: Verifies that C# compiles and EditMode tests pass - through Unity MCP when the Editor is open, scripts/verify.ps1 when it is closed, "compile NOT VERIFIED" when there is no Unity. Also where tests and manual test harnesses go. Use after any change to .cs, .asmdef, the package manifest or a hand-edited asset, before calling work done, and whenever compile errors, CS#### codes or tests come up.
+description: Checks that C# compiles and EditMode tests pass - Unity MCP when the Editor is open, scripts/verify.ps1 when it is closed, "compile NOT VERIFIED" without Unity - and says where tests and test harnesses go. Use after changing .cs, .asmdef, packages or a hand-edited asset, and for compile errors or tests.
 ---
 
 # Unity verify (batch-mode compile and EditMode tests)
@@ -11,8 +11,7 @@ Prove a C# change compiles before saying it is finished. Pick the path by Editor
   The batch script cannot run while the Editor has the project open (it exits 2).
 - **Editor closed** → batch script (`scripts/verify.ps1`).
 
-Don't use the plugin's `unity-cli` or install `com.unity.pipeline` for this. Never report "done"
-with a failing or skipped verify.
+Never report "done" with a failing or skipped verify.
 
 ## No Unity in this environment
 
@@ -49,7 +48,7 @@ internal class TestResultLogger : ICallbacks   // UnityEditor.TestTools.TestRunn
 }
 // in Execute: var api = ScriptableObject.CreateInstance<TestRunnerApi>(); api.RegisterCallbacks(new TestResultLogger());
 // api.Execute(new ExecutionSettings(new Filter { testMode = TestMode.EditMode,
-//     assemblyNames = new[] { "_Core.Tests.Editor" } }) { runSynchronously = true });
+//     assemblyNames = new[] { "_Core.Tests.Editor" /* + the game's own test assemblies */ } }) { runSynchronously = true });
 ```
 
 The call reports "executed partially" because tests log expected errors; that is not a failure.
@@ -67,9 +66,9 @@ powershell -ExecutionPolicy Bypass -File .claude/skills/unity-verify/scripts/ver
 ```
 
 - Default: compile-only (`-batchmode -nographics -quit`).
-- `-Tests`: compile and run EditMode tests (`-runTests -testPlatform EditMode`): the project's
-  own tests in `Assets/_Core/Tests/Editor` plus package tests the runner picks up (e.g. an
-  Addressables stub), so the total is a little higher than the project's count. Failed tests are listed as `FAILED <full name>: <message>`.
+- `-Tests`: compile and run EditMode tests (`-runTests -testPlatform EditMode`): every EditMode
+  test assembly in the project plus package tests the runner picks up (e.g. an Addressables stub).
+  Failed tests are listed as `FAILED <full name>: <message>`.
 - `-DryRun`: only resolve paths and run the environment checks (fast; use it to check whether the
   Editor is open before a long run).
 - `-TimeoutSeconds <n>` (default 1800), `-UnityPath <exe>` or env `UNITY_EDITOR_PATH` to override
@@ -92,17 +91,12 @@ Output is kept short on purpose. The full Unity log path is printed (`%TEMP%\uni
 open it only when the summary is not enough (e.g. exit 2 with an unknown cause, or
 "compiler errors but no CS line parsed").
 
-## The Editor must be closed
-
-Unity allows only one Editor per project. If the user has the project open, the script exits 2
-with "project is open in the Unity Editor". Never kill Unity processes yourself; ask the user to save and close the Editor, then rerun.
-
-If the user prefers to keep the Editor open, ask them to check the Console after Unity recompiles
-and paste any red errors; treat that as the verify result.
+Unity allows one Editor per project: with the project open the script exits 2 ("project is open
+in the Unity Editor"). Never kill Unity yourself; use the MCP path or ask the user to save and close it.
 
 ## Where tests go
 
-- EditMode tests cover `_Core` logic: `Assets/_Core/Tests/Editor` (assembly `_Core.Tests.Editor`). Internal seams for them: `SaveManager.Init(storage, config)`, `Singleton<T>.SetInstanceForTests`, `PlatformFactory.Unregister`, `EventBus.SubscriberCount<T>`, and `Shutdown()` on managers that subscribe in `Init`.
+- EditMode tests cover `_Core` logic: `Assets/_Core/Tests/Editor` (assembly `_Core.Tests.Editor`). A game that tests its own logic adds an EditMode assembly under `_Project` and to the MCP filter above. Internal seams for `_Core` tests: `SaveManager.Init(storage, config)`, `Singleton<T>.SetInstanceForTests`, `PlatformFactory.Unregister`, `EventBus.SubscriberCount<T>`, and `Shutdown()` on managers that subscribe in `Init`.
 - Test-only MonoBehaviours go in `Assets/_Core/Tests/Runtime` (`_Core.Tests.Runtime`): Unity can't attach components from an Editor-only assembly.
 - Gameplay, UI and SDK behaviour are checked by hand: keyboard- or ContextMenu-driven harnesses in `Assets/_Project/Testing/` (or `Assets/_Platforms/<Name>/Testing/` when they use SDK types), placed in test scenes under `Assets/_Project/Scenes/Test/`. Test scenes have a `BootstrapGuard` and stay out of Build Settings (`BuildValidator` blocks them).
 
