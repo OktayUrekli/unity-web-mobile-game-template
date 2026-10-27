@@ -1,13 +1,13 @@
 ---
 name: gameplay-feature
-description: How game code in Assets/_Project (2D or 3D) connects to the template - placement, tuning data, pausing, pooled spawning, progress, sounds, ads and gameplay start/stop. Use when adding or changing gameplay (player, enemy, spawner, level, score, game over, continue, reward, timer) or when asked how to make something work in this template.
+description: How game code in Assets/_Project connects to the template - placement, tuning data, pausing, pooled spawning, progress, sounds, ads and gameplay start/stop. Use when adding or changing gameplay, 2D or 3D.
 ---
 
 # Gameplay on this template
 
 Design the game however the request needs; this skill covers only the contracts with the framework. C# rules: `unity-scripting`. Framework details: `core-systems`. Screens and popups: `ui-development`.
 
-One session owner per gameplay scene runs the loop: HUD, pause and game over, saving, ads, `GameplayStateManager`. In the template that is the demo `Assets/_Project/Scripts/Systems/GameplayController.cs` in `02_Gameplay`. Extend or replace it; never add a second owner.
+One session owner per gameplay scene runs the loop: HUD, pause and game over, saving, ads, `GameplayStateManager`. Find it by its `BeginGameplay()` call, then extend or replace it; never add a second owner.
 
 ## Placement
 

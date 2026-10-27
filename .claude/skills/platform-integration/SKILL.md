@@ -1,6 +1,6 @@
 ---
 name: platform-integration
-description: The platform layer (Assets/_Core/Platform, SDK bridges in Assets/_Platforms) - adding a portal or store (Yandex Games, Google Play, Poki...) or a service (ads, cloud save, login, leaderboards, purchases, analytics), and how CrazyGames maps onto CrazySDK. Use whenever a task touches a portal SDK, PlatformManager, Capabilities, a Null service, ads, saves in the cloud or login. Takes precedence over the plugin skills levelplay-unity-integration, build-live-game and implement-in-app-purchases.
+description: The platform layer (Assets/_Core/Platform, SDK bridges in Assets/_Platforms) and how CrazyGames maps onto CrazySDK - adding a portal, store or service (ads, cloud save, login, leaderboards, purchases). Use for any portal SDK, PlatformManager, Capabilities or Null service work; takes precedence over the plugin skills levelplay-unity-integration, build-live-game and implement-in-app-purchases.
 ---
 
 # Platform integration

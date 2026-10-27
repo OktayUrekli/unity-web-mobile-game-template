@@ -1,6 +1,6 @@
 ---
 name: unity-asset-editing
-description: Safely changes Unity scenes, prefabs, config assets (UIConfig, SceneConfig, AudioConfig, PoolConfig, PlatformConfig), SoundData assets, build settings and .meta files - through Unity MCP when the Editor is open, by careful YAML edits otherwise - and finds which assets reference a script. Use whenever a task changes a scene, prefab, config asset, build list or meta file, or mentions a missing script or broken GUID.
+description: Safely changes scenes, prefabs, config and SoundData assets, build settings and .meta files - Unity MCP when the Editor is open, careful YAML edits otherwise - and finds which assets reference a script. Use for any scene, prefab, asset or meta change, or a missing script or broken GUID.
 ---
 
 # Editing scenes, prefabs and assets

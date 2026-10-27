@@ -1,22 +1,11 @@
-# Known issues (living list)
+# Known issues
 
-The single, authoritative list of defects currently present in `Assets/_Core`, `Assets/_Project` and project settings. Other skills point here instead of describing bugs themselves.
+Defects currently present in this repository's code, scenes and settings. Other skills point here instead of describing bugs themselves.
 
-Rules for keeping it true:
-- **Remove or update an entry in the same change that fixes it.** A fix without the list update is incomplete.
-- Add an entry when a review finds a pre-existing defect that is not fixed right away.
-- Locate code by `path` + type/method, never line numbers. Re-read the code before quoting an entry - it may already be fixed.
-- Severity uses the review scale: **Critical**, **Major**, **Minor**, **Nit**.
-- Format: `path` - `Type.Member` - severity - problem. **Fix:** one line.
-
-## Contents
-- Ads
-- Platform
-- Save
-- Settings
-- Audio
-- Mobile
-- Build / Packages
+- Remove or update an entry in the same change that fixes or alters the defect.
+- Add an entry only for a real defect that stays unfixed and could mislead a later session, and only when the user agrees or a change knowingly leaves it in place. Ideas, style points and one-off observations stay out.
+- Locate code by `path` + type/method, never line numbers. Re-read the code before quoting an entry; it may already be fixed.
+- Format: `path` - `Type.Member` - severity (**Critical**, **Major**, **Minor**, **Nit**, as in the review scale) - problem. **Fix:** one line.
 
 ## Ads
 

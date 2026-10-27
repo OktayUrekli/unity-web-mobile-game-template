@@ -1,6 +1,6 @@
 ---
 name: unity-scripting
-description: C# conventions and Unity pitfalls in this template (2D and 3D) - placement and namespaces, fake null, lifetime after await, WebGL threading, serialization, 2D vs 3D physics, Input System, editor-only code. Use when writing, editing or debugging C# here, even a one-line fix.
+description: C# conventions and Unity pitfalls in this project (2D and 3D) - placement and namespaces, fake null, lifetime after await, WebGL threading, serialization, physics, Input System, editor-only code. Use when writing, editing or debugging any C# here.
 ---
 
 # Unity C# in this project
