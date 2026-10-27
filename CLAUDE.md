@@ -49,7 +49,7 @@ Project skills in `.claude/skills/` hold this project's contracts and traps; rea
 Every game made from the template carries this file and the skills, and `/template-sync` compares them.
 
 - Docs hold rules and traps the code doesn't show; signatures, call order and file lists come from the code. Each rule lives in one place; elsewhere, point to it.
-- Fix a doc in the same change that makes it wrong. Add a rule only for a trap that would mislead the next session and that the code can't show; prefer fixing the cause (code, validator, tool). No one-off mistakes, history, dates, counts or changelogs.
+- Fix a doc in the same change that makes it wrong. Add a rule only for a trap that would mislead the next session and that the code can't show; prefer fixing the cause (code, validator, tool). Your own one-off slips, history, dates, counts and changelogs get no line anywhere.
 - Every session loads CLAUDE.md, so a line added there replaces or shortens another, and detail goes to a skill. A SKILL.md stays short, with rare detail in `references/`.
 - Edit docs by hand, never with a compress or trim tool, and name every doc change in your reply.
 - Framework skills name no game; a game's own rules go in CLAUDE.md `## Game` or a game skill.
