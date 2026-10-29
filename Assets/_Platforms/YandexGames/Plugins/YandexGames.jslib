@@ -52,6 +52,17 @@ var YandexGamesBridge = {
       return error.message || error.code || String(error);
     },
 
+    // Runs an SDK call and always returns a Promise. An exception thrown inside a function C# called stops the
+    // Unity runtime ("Halting program"), and some SDK methods return nothing in some versions and in the
+    // sdk-dev-proxy mocks, so no SDK result is chained on directly.
+    promise: function (call) {
+      try {
+        return Promise.resolve(call());
+      } catch (e) {
+        return Promise.reject(e);
+      }
+    },
+
     // Values this bridge writes are strings; anything else (written by another build or tool) goes to C# as JSON.
     toText: function (value) {
       return typeof value === 'string' ? value : JSON.stringify(value);
@@ -74,7 +85,8 @@ var YandexGamesBridge = {
 
       // The whole object is sent every time: it holds every key, so the result is the same whether setData
       // replaces or merges. flush false lets the SDK queue the request (setData allows 100 calls per 5 minutes).
-      YandexGames.player.setData(YandexGames.data, false).then(function () {
+      var player = YandexGames.player;
+      YandexGames.promise(function () { return player.setData(YandexGames.data, false); }).then(function () {
         ids.forEach(function (id) { YandexGames.reply(id, true); });
       }, function (error) {
         var text = YandexGames.errorText(error);
@@ -90,31 +102,35 @@ var YandexGamesBridge = {
   YandexGames_Init: function (receiverPtr) {
     YandexGames.receiver = UTF8ToString(receiverPtr);
 
-    YaGames.init().then(function (sdk) {
+    YandexGames.promise(function () { return YaGames.init(); }).then(function (sdk) {
       YandexGames.sdk = sdk;
 
       // Sent around the platform's ads (its start-up ad included), purchase windows, hidden tabs and minimized
       // windows. The SDK itself stops and restarts GameplayAPI around them.
-      sdk.on('game_api_pause', function () {
-        YandexGames.send('OnGamePaused', '');
-      });
-      sdk.on('game_api_resume', function () {
-        YandexGames.send('OnGameResumed', '');
+      try {
+        sdk.on('game_api_pause', function () {
+          YandexGames.send('OnGamePaused', '');
+        });
+        sdk.on('game_api_resume', function () {
+          YandexGames.send('OnGameResumed', '');
 
-        // If the game reported gameplay as stopped (for example the pause menu opened during the pause), undo the
-        // SDK's automatic start once its own handler has run.
-        setTimeout(function () {
-          var api = YandexGames.gameplayApi();
-          if (!YandexGames.gameplayRunning && api && typeof api.stop === 'function') {
-            api.stop();
-          }
-        }, 0);
-      });
+          // If the game reported gameplay as stopped (for example the pause menu opened during the pause), undo
+          // the SDK's automatic start once its own handler has run.
+          setTimeout(function () {
+            var api = YandexGames.gameplayApi();
+            if (!YandexGames.gameplayRunning && api && typeof api.stop === 'function') {
+              api.stop();
+            }
+          }, 0);
+        });
+      } catch (e) {
+        console.warn('Yandex: pause events unavailable: ' + YandexGames.errorText(e));
+      }
 
       // Cloud saves need the player object; without it the game saves locally.
-      return sdk.getPlayer().then(function (player) {
+      return YandexGames.promise(function () { return sdk.getPlayer(); }).then(function (player) {
         YandexGames.player = player;
-        return player.getData();
+        return YandexGames.promise(function () { return player.getData(); });
       }).then(function (data) {
         YandexGames.data = data || {};
         return true;
@@ -147,7 +163,9 @@ var YandexGamesBridge = {
     var sdk = YandexGames.sdk;
     var api = sdk && sdk.features ? sdk.features.LoadingAPI : null;
     if (api && typeof api.ready === 'function') {
-      api.ready();
+      YandexGames.promise(function () { return api.ready(); }).catch(function (error) {
+        console.warn('Yandex: LoadingAPI.ready failed: ' + YandexGames.errorText(error));
+      });
     }
   },
 
@@ -155,7 +173,9 @@ var YandexGamesBridge = {
     YandexGames.gameplayRunning = true;
     var api = YandexGames.gameplayApi();
     if (api && typeof api.start === 'function') {
-      api.start();
+      YandexGames.promise(function () { return api.start(); }).catch(function (error) {
+        console.warn('Yandex: GameplayAPI.start failed: ' + YandexGames.errorText(error));
+      });
     }
   },
 
@@ -163,7 +183,9 @@ var YandexGamesBridge = {
     YandexGames.gameplayRunning = false;
     var api = YandexGames.gameplayApi();
     if (api && typeof api.stop === 'function') {
-      api.stop();
+      YandexGames.promise(function () { return api.stop(); }).catch(function (error) {
+        console.warn('Yandex: GameplayAPI.stop failed: ' + YandexGames.errorText(error));
+      });
     }
   },
 
@@ -201,7 +223,7 @@ var YandexGamesBridge = {
   // Sticky banners show only when "Use the API to display a sticky-banner" is on in the Developer Console;
   // otherwise Yandex shows them for the whole session by itself.
   YandexGames_ShowBanner: function () {
-    YandexGames.sdk.adv.showBannerAdv().then(function (result) {
+    YandexGames.promise(function () { return YandexGames.sdk.adv.showBannerAdv(); }).then(function (result) {
       if (result && result.reason) {
         console.warn('Yandex: sticky banner not shown: ' + result.reason);
       }
@@ -211,7 +233,7 @@ var YandexGamesBridge = {
   },
 
   YandexGames_HideBanner: function () {
-    YandexGames.sdk.adv.hideBannerAdv().catch(function (error) {
+    YandexGames.promise(function () { return YandexGames.sdk.adv.hideBannerAdv(); }).catch(function (error) {
       console.warn('Yandex: hiding the sticky banner failed: ' + YandexGames.errorText(error));
     });
   },
@@ -237,13 +259,17 @@ var YandexGamesBridge = {
     var name = UTF8ToString(namePtr);
 
     // Only signed-in players can submit; guests get false here.
-    sdk.isAvailableMethod('leaderboards.setScore').then(function (available) {
+    YandexGames.promise(function () {
+      return sdk.isAvailableMethod('leaderboards.setScore');
+    }).then(function (available) {
       if (!available) {
         YandexGames.reply(id, false, 'leaderboards.setScore is not available (guest player?)');
         return;
       }
 
-      return sdk.leaderboards.setScore(name, Math.round(score)).then(function () {
+      return YandexGames.promise(function () {
+        return sdk.leaderboards.setScore(name, Math.round(score));
+      }).then(function () {
         YandexGames.reply(id, true);
       });
     }).catch(function (error) {
@@ -252,16 +278,19 @@ var YandexGamesBridge = {
   },
 
   YandexGames_RequestReview: function (id) {
-    var feedback = YandexGames.sdk.feedback;
+    var feedback = null;
 
     // Only signed-in players who have not rated the game yet, once per session.
-    feedback.canReview().then(function (result) {
+    YandexGames.promise(function () {
+      feedback = YandexGames.sdk.feedback;
+      return feedback.canReview();
+    }).then(function (result) {
       if (!result || !result.value) {
         YandexGames.reply(id, false, result && result.reason ? result.reason : 'canReview returned false');
         return;
       }
 
-      return feedback.requestReview().then(function (outcome) {
+      return YandexGames.promise(function () { return feedback.requestReview(); }).then(function (outcome) {
         YandexGames.reply(id, true, outcome && outcome.feedbackSent ? 'sent' : 'closed');
       });
     }).catch(function (error) {
