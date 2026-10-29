@@ -4,7 +4,7 @@ Web ve mobil oyunlarını hızlı başlatmak için hazırlanmış, tekrar kullan
 
 Her yeni oyunda yeniden yazılan altyapı (açılış, kayıt, ayarlar, ses, reklam, platform SDK'ları, arayüz, sahne geçişi, build kontrolleri) burada hazır gelir. Sen sadece oyunun kendisini `Assets/_Project` altına yazarsın.
 
-- **Hedef platformlar:** CrazyGames (WebGL) bugün hazır. Google Play ve Yandex Games için yer ayrılmış durumda; köprüsü henüz olmayan platformlarda oyun yine çalışır, platform servisleri "boş" (Null) sürümlere düşer.
+- **Hedef platformlar:** CrazyGames ve Yandex Games (WebGL) için köprüler hazır. Google Play için yer ayrılmış durumda; köprüsü henüz olmayan platformlarda oyun yine çalışır, platform servisleri "boş" (Null) sürümlere düşer.
 - **Render:** URP. 2D profilde `URP_2D`, 3D profilde mobile göre ayarlanmış `URP_3D`.
 - **Girdi:** Input System (Active Input Handling: Both).
 
@@ -21,7 +21,7 @@ Her yeni oyunda yeniden yazılan altyapı (açılış, kayıt, ayarlar, ses, rek
 |---|---|
 | **CrazyGames (WebGL)** | Hazır. Tüm SDK servisleri (reklam, kayıt, kullanıcı, banner, leaderboard, HappyTime) bağlı, Release build alınıyor. Localhost'ta tarayıcıda denendi (2026-10-04): açılış, sayfa yenileme, reklamlar ve kayıt çalışıyor. Gerçek portalda henüz denenmedi. |
 | **Google Play (Android)** | Kısmen. Mobil temel hazır (60 FPS, Geri tuşu, arka plana alma, titreşim), development APK telefonda denendi (2026-10-04): menü, ses, titreşim, dil, Geri tuşu, arka plana alma ve kayıt çalışıyor; çentikli ekranda safe area tam doğru değildi; düzeltmesi (arka planlar tam ekran, içerik güvenli alanda) telefonda henüz yeniden denenmedi. `Android - Development` (APK) ve `Android - Release` (AAB) build profilleri hazır. Platform köprüsü yok: reklam, giriş ve bulut kaydı çalışmaz, kayıt cihazda (PlayerPrefs) tutulur. Reklam sağlayıcısı henüz seçilmedi. |
-| **Yandex Games** | Köprü yok. Menüden seçilebilir; oyun Null servislerle çalışır. |
+| **Yandex Games** | Köprü hazır: tam ekran ve ödüllü reklam, sticky banner, `LoadingAPI.ready`, oynanış başladı/durdu bildirimi, platformun duraklatma isteği, bulut kayıt, dil algılama, leaderboard ve oyun puanlama. Giriş (yetkilendirme) ve uygulama içi satın alma henüz bağlı değil. Gerçek Yandex sayfasında henüz denenmedi. |
 | **iOS** | Denenmedi. iOS modülüyle hiç build alınmadı. |
 
 ---
@@ -117,13 +117,13 @@ Reklam isteği: oyun kodu `PlatformManager.Instance.Ads` üzerinden ister → re
 1. Bu repodan yeni bir repo oluştur (GitHub'da **Use this template** ya da kopyala) ve Unity 6000.3.21f1 ile aç.
 2. `Tools/Template/New Game Setup`: isim, bundle id, sürüm, ekran yönü, ikon, yükleme logosu.
 3. `Tools/Template/Set Up as 2D Game` veya `Set Up as 3D Game`.
-4. `Tools/Template/Platform` menüsünden hedef platformu seç (WebGL için CrazyGames, Android için Google Play). Leaderboard ayarları `Assets/_Project/ScriptableObjects/Config/PlatformConfig.asset` içinde; leaderboard varsayılan olarak **kapalı**; açmak için `Leaderboard Enabled` işaretle ve portaldan aldığın anahtarı gir.
+4. `Tools/Template/Platform` menüsünden hedef platformu seç (WebGL için CrazyGames ya da Yandex Games, Android için Google Play). Leaderboard ayarları `Assets/_Project/ScriptableObjects/Config/PlatformConfig.asset` içinde; leaderboard varsayılan olarak **kapalı**; açmak için `Leaderboard Enabled` işaretle. CrazyGames'te portaldan aldığın anahtarı `Leaderboard Encryption Key` alanına, Yandex'te leaderboard'un teknik adını `Default Leaderboard Id` alanına yaz.
 5. Oyunu `Assets/_Project` altına yaz. Başlangıç noktası olarak `02_Gameplay` sahnesi ve `GameplayController` örneğine bak.
 6. Yeni içerik `_Core`'a dokunmadan eklenir: arayüz için prefab'ı `UIConfig` listesine ekle ve `ShowPopup<SeninPopup>()` ile aç; ses için bir `SoundData` asset'i oluşturup alana sürükle; sahne için Build Settings'e ve `GameScenes` sınıfına adını ekle; havuz için `PoolConfig`'e kayıt ekle. Şablondaki örnek sesleri (`templateClickSound`, `templateMusic`) kendi seslerinle değiştir.
 7. Kayıt sınıfında bir alanın adını değiştirir, silersen ya da anlamını değiştirirsen sınıfın `CurrentVersion` değerini artır ve eski veriyi `Migrate` içinde çevir. Yeni alan eklemek için buna gerek yok.
 8. Build:
    - **WebGL (CrazyGames):** `File > Build Profiles` içinde bir Web profiline geç (hedefi WebGL yapar), sonra `CrazySDK/Development Build` veya `Release Build`. CrazySDK build'i profilin kendi ayarlarını kullanmaz, gereken ayarları kendisi yapar. Deneme ve yükleme adımları: [CrazyGames'te yayınlama](#crazygameste-yayınlama).
-   - **Diğer web portalları (Yandex; köprüsü eklenince):** Unity'nin kendi Build düğmesiyle; masaüstü ağırlıklı portal için `Web - Desktop - Release` (DXT doku), mobil ağırlıklı portal için `Web - Mobile - Release` (ASTC doku). Profillere Player Settings override ekleme: şablonun define'larını ezer.
+   - **WebGL (Yandex Games ve diğer web portalları):** Unity'nin kendi Build düğmesiyle; masaüstü ağırlıklı oyun için `Web - Desktop - Release` (DXT doku), mobil ağırlıklı oyun için `Web - Mobile - Release` (ASTC doku). Profillere Player Settings override ekleme: şablonun define'larını ezer. Yandex için deneme ve yükleme adımları: [Yandex Games'te yayınlama](#yandex-gamesde-yayınlama).
    - **Android (Google Play):** Google Play'i seç. Telefonda denemek için `Android - Development` (APK), Play Store'a yüklemek için `Android - Release` (AAB) profiliyle build al. IL2CPP + ARM64 gerekir. Yayın için `Player Settings > Publishing Settings > Keystore Manager` ile bir keystore oluştur; keystore dosyasını ve şifresini **repoya koyma** (`.gitignore` `*.keystore` / `*.jks` dosyalarını zaten dışarıda tutar), güvenli bir yerde yedekle: kaybedersen oyunu güncelleyemezsin.
    - Build listesinde 0. sahne `00_Bootstrap` olmalı, test sahneleri (`Scenes/Test`) olmamalı; `BuildValidator` bunu senin yerine kontrol eder.
 
@@ -152,6 +152,22 @@ Claude Code kullanıyorsan `/crazygames-release` bu adımları bir kontrol liste
 
 ---
 
+## Yandex Games'te yayınlama
+
+Yüklemek için bir Yandex Games geliştirici hesabı gerekir ([oyun ekleme](https://yandex.com/dev/games/doc/en/console/add-new-game)). Localhost'ta denemek için hesap gerekmez. Güncel kurallar: [moderasyon gereksinimleri](https://yandex.com/dev/games/doc/en/concepts/requirements).
+
+1. **Hazırlık:** `Tools/Template/Platform/Yandex Games (WebGL)` seç. Bu, Yandex'in WebGL şablonunu (`Assets/WebGLTemplates/YandexGames`, SDK'yı `/sdk.js` yolundan yükler) da seçer. `File > Build Profiles` içinde bir Web profiline geç.
+2. **Localhost'ta dene:** `Web - Desktop - Development` profiliyle build al (Release build bir saati geçebilir, onu sadece yüklemeden önce al), sonra build klasöründe Node.js ile `npx @yandex-games/sdk-dev-proxy -p . --dev-mode=true` çalıştır ve `https://localhost:8080` adresini aç (sertifika uyarısını geç). Bu modda SDK sahtedir: reklamlar örnek kutudur, kayıt ve leaderboard tarayıcıda tutulur. Proxy dosyaları sıkıştırma başlığı olmadan sunar; Brotli build'de bu deneme için `Player Settings > Publishing Settings > Decompression Fallback` açık olmalı. Yandex'in kendi sunucusu Brotli'yi doğru sunar, yüklenecek build'de bu ayar gerekmez. Kontrol et:
+   - Açılışta konsolda `Yandex: SDK initialized` ve `Platform initialized successfully: YandexGames` var.
+   - Ara ve ödüllü reklamda oyun duruyor, ses kesiliyor, reklamdan sonra duraklatma menüsü açılmadan devam ediyor; ödül bir kez veriliyor.
+   - Sayfayı yenile: skor ve ayarlar duruyor.
+3. **Yükle:** Build klasörünün **içeriğini** (kökte `index.html` olacak şekilde) ZIP yap; açılmış hali 100 MB'ı geçmemeli, dosya adlarında boşluk ve Kiril harf olmamalı (build bitince konsolda `[BuildValidator]` uymayan adları hata olarak listeler). Developer Console'da taslak oluştur, ZIP'i yükle ve taslağı dene. Banner'ı oyun yönetecekse Reklam sekmesinde "Use the API to display a sticky-banner" seçeneğini aç. Leaderboard kullanacaksan orada oluştur ve teknik adını `PlatformConfig` içine yaz.
+4. **Gönder:** Oyunun bilgilerini, dillerini ve görsellerini doldurup moderasyona gönder.
+
+Şablonun hazır karşıladığı kurallar: `LoadingAPI.ready()` ilk sahne açılınca gider; `GameplayAPI.start/stop` oynanışla eşleşir (`GameplayStateManager`); reklam ve platform duraklatmasında oyun durur, ses kesilir; oyun Yandex'in arayüz dilinde açılır (oyuncu dil seçmediyse); sağ tık menüsü, metin seçme ve sayfa kaydırma kapalı, oyun alanı çerçeveyi doldurur. Senin dikkat etmen gerekenler: oyunu taslakta seçtiğin her dile çevir, ödüllü reklam butonu reklam olduğunu ve ödülü açıkça söylesin, reklamı sadece doğal duraklarda göster.
+
+---
+
 ## Test sahneleri
 
 `Assets/_Project/Scenes/Test/` altındaki sahneler build'e girmez, editörde Play ile çalışır.
@@ -175,11 +191,12 @@ Claude Code kullanıyorsan `/crazygames-release` bu adımları bir kontrol liste
 ```
 Assets/
   _Core/        Oyundan bağımsız altyapı kodu (her oyunda aynı kalır). Namespace = klasör yolu.
-  _Platforms/   Platform SDK köprüleri (ör. CrazyGames). SDK'ya özel kod sadece burada.
+  _Platforms/   Platform SDK köprüleri (CrazyGames, YandexGames). SDK'ya özel kod sadece burada.
   _Project/     Bu oyuna ait her şey: sahneler, prefab'lar, arayüz, sesler, oyun kodu, test araçları.
     ScriptableObjects/Config/   Oyunun config asset'leri (GameConfig, UIConfig, AudioConfig, SceneConfig, PoolConfig, PlatformConfig...).
   CrazySDK/, ThirdParty/, Plugins/   Dış paketler; değiştirilmez.
   Settings/     URP asset'leri, build profilleri, Input Actions, Localization ayarları.
+  WebGLTemplates/   Platforma özel WebGL sayfaları (YandexGames: SDK'yı yükler).
 Docs/           README görselleri (Unity bu klasörü içe aktarmaz).
 ```
 

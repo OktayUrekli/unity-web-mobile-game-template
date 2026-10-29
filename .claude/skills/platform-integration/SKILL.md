@@ -5,7 +5,7 @@ description: The platform layer (Assets/_Core/Platform, SDK bridges in Assets/_P
 
 # Platform integration
 
-Game code talks only to `PlatformManager.Instance.<Service>` and checks `Capabilities`. If an SDK type leaks outside `Assets/_Platforms/<Name>/`, switching platforms stops being a config change. `CrazyGamesPlatform` is the reference implementation; read it before writing a new one. CrazyGames and CrazySDK details: `references/crazygames.md`.
+Game code talks only to `PlatformManager.Instance.<Service>` and checks `Capabilities`. If an SDK type leaks outside `Assets/_Platforms/<Name>/`, switching platforms stops being a config change. `CrazyGamesPlatform` (Unity SDK) and `YandexGamesPlatform` (own `.jslib` over the JS SDK) are the reference implementations; read the closer one before writing a new one. Details: `references/crazygames.md`, `references/yandexgames.md`.
 
 Layout: `_Core/Platform/Core/` (`IPlatform`, `PlatformCapabilities`, `PlatformFactory`, `PlatformManager`), `_Core/Platform/Platforms/NullPlatform.cs`, and per service `_Core/Platform/Services/<Name>/I<Name>Service.cs` + `Null/Null<Name>Service.cs`. Bridges live in `Assets/_Platforms/<PlatformType>/Core|Services|Testing/` (namespace `_Platforms.<Name>.*`) in Assembly-CSharp, which sees SDK assemblies; `_Core` grants Assembly-CSharp its `internal` `Set*Service` and capability setters.
 

@@ -63,11 +63,14 @@ namespace _Project.EditorTools
         }
 
         /// <summary>
-        /// Called by Unity after a player build. Warns (never fails) when a GAME_2D build includes the
-        /// 3D Physics module or a GAME_3D build includes Physics2D, naming what pulled the module in.
+        /// Called by Unity after a player build. Logs an error when a Yandex Games build has file names Yandex
+        /// rejects, and warns (never fails) when a GAME_2D build includes the 3D Physics module or a GAME_3D build
+        /// includes Physics2D, naming what pulled the module in.
         /// </summary>
         public void OnPostprocessBuild(BuildReport report)
         {
+            ValidateYandexFileNames(report);
+
             GameProfile profile = GameProfileSetup.GetProfile(
                 NamedBuildTarget.FromBuildTargetGroup(report.summary.platformGroup));
             if (profile == GameProfile.Unknown)
@@ -91,6 +94,32 @@ namespace _Project.EditorTools
             string reasons = string.Join(", ", stripping.GetReasonsForIncluding(unexpectedModule));
             Debug.LogWarning($"[BuildValidator] {profile} build includes the {unexpectedModule}" +
                              (string.IsNullOrEmpty(reasons) ? "." : $", pulled in by: {reasons}."));
+        }
+
+        // Yandex Games rejects an upload whose file or folder names contain spaces or non-ASCII characters.
+        // Addressables bundles can carry their group's name, and Localization names its groups after each Locale
+        // ("Русский"), so a new group needs Bundle Naming "Use Hash of Filename" like the string-table groups.
+        private static void ValidateYandexFileNames(BuildReport report)
+        {
+            string root = report.summary.outputPath;
+            if (report.summary.platform != BuildTarget.WebGL || !Directory.Exists(root))
+                return;
+
+            PlatformConfig config = PlatformSetup.FindConfig();
+            if (config == null || config.Platform != PlatformType.YandexGames)
+                return;
+
+            string[] invalid = Directory.GetFileSystemEntries(root, "*", SearchOption.AllDirectories)
+                .Where(path => Path.GetFileName(path).Any(c => c == ' ' || c > 127))
+                .Select(path => path.Substring(root.Length).TrimStart('/', '\\'))
+                .ToArray();
+
+            if (invalid.Length > 0)
+                Debug.LogError("[BuildValidator] Yandex Games rejects file names with spaces or non-ASCII characters. " +
+                               "Rename these (for Addressables bundles: Bundle Naming \"Use Hash of Filename\") before uploading:\n- " +
+                               string.Join("\n- ", invalid));
+            else
+                Debug.Log("[BuildValidator] Yandex Games file names OK (no spaces or non-ASCII characters).");
         }
 
         [MenuItem("Tools/Build/Validate Build Settings")]
@@ -209,8 +238,14 @@ namespace _Project.EditorTools
 
             ValidateCrazyGamesSdk(target, platform, defined, errors, warnings);
 
-            if (config.LeaderboardEnabled && string.IsNullOrWhiteSpace(config.LeaderboardEncryptionKey))
+            if (config.LeaderboardEnabled && platform == PlatformType.CrazyGames &&
+                string.IsNullOrWhiteSpace(config.LeaderboardEncryptionKey))
                 warnings.Add("PlatformConfig.LeaderboardEnabled is on but LeaderboardEncryptionKey is empty: the leaderboard will stay disabled.");
+
+            if (config.LeaderboardEnabled && platform == PlatformType.YandexGames &&
+                string.IsNullOrWhiteSpace(config.DefaultLeaderboardId))
+                warnings.Add("PlatformConfig.LeaderboardEnabled is on but DefaultLeaderboardId is empty: scores submitted " +
+                             "without a leaderboard ID are dropped. Enter the leaderboard's technical name from the Yandex Developer Console.");
         }
 
         // CrazySDK runs its SiteLock before the first scene on WebGL and crashes the game on any domain other
