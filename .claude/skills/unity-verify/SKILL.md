@@ -108,6 +108,7 @@ still need to check in Play Mode (starting from `00_Bootstrap`):
 - Play Mode behaviour, null references at runtime, async/bootstrap ordering.
 - Scene and prefab wiring: missing serialized references, "missing script" components,
   config asset entries (UIConfig prefabs, SceneConfig, AudioConfig, PoolConfig), unassigned `SoundData` fields.
-- WebGL/CrazyGames-only behaviour (ads, SDK, saves); see the `webgl-performance` skill.
+- WebGL and portal-only behaviour (ads, SDK, saves); see the `webgl-performance` skill.
 - Code under `#if UNITY_WEBGL && !UNITY_EDITOR` or other platform defines is compiled for the
-  Editor's active build target only; other targets are not checked.
+  Editor's active build target only; other targets are not checked. A bridge in `Assets/_Platforms/<Name>`
+  compiles only while that platform is selected (`Tools/Template/Platform`).
