@@ -32,7 +32,8 @@ The YandexGames WebGL template loads `/sdk.js` (a relative path, required for up
 
 - Sticky banner: Advertising tab, "Use the API to display a sticky-banner", or Yandex shows it the whole session.
 - Leaderboard: create it, then put its technical name in `PlatformConfig.DefaultLeaderboardId` and turn on `LeaderboardEnabled`.
-- Upload: a ZIP whose root holds `index.html` (the build folder's contents), at most 100 MB uncompressed, no spaces or Cyrillic in names.
+- Upload: a ZIP whose root holds `index.html` (the build folder's contents), at most 100 MB uncompressed, no spaces or Cyrillic in names. Yandex hosting serves `.br` files with `Content-Encoding: br` (checked on a live game), so Brotli needs no Decompression Fallback there.
+- Name trap: an Addressables bundle takes its group's name by default, and Localization names its groups after each Locale (`Русский`). The string-table groups therefore use Bundle Naming "Use Hash of Filename"; a group added later (a new Locale) needs the same. `BuildValidator` logs an error listing offending names after a Yandex build.
 
 ## Local testing
 
