@@ -63,6 +63,15 @@ namespace _Core.Platform.Config
         /// </summary>
         public string LeaderboardEncryptionKey => leaderboardEncryptionKey;
 
+        [Tooltip("Leaderboard used when game code submits a score without a leaderboard ID. Yandex Games: the " +
+                 "leaderboard's technical name in the Developer Console. CrazyGames has one leaderboard and ignores it.")]
+        [SerializeField] private string defaultLeaderboardId = "";
+
+        /// <summary>
+        /// Leaderboard ID used when game code passes none (Yandex Games: the technical name).
+        /// </summary>
+        public string DefaultLeaderboardId => defaultLeaderboardId;
+
         [Header("Mobile")]
         [Tooltip("Application.targetFrameRate on Android and iOS, which otherwise run at 30 FPS. Ignored on WebGL and desktop.")]
         [Min(15)]

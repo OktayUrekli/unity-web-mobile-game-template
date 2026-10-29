@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Reusable Unity 6 starter template for **2D and 3D** games (exact version in `ProjectSettings/ProjectVersion.txt`; URP, Input System, DOTween). Ships to **CrazyGames (WebGL)** today; Google Play and Yandex Games are stubbed and fall back to `NullPlatform`. `README.md` (Turkish) is the human-facing overview.
+Reusable Unity 6 starter template for **2D and 3D** games (exact version in `ProjectSettings/ProjectVersion.txt`; URP, Input System, DOTween). Ships to **CrazyGames** and **Yandex Games** (WebGL); Google Play is stubbed and falls back to `NullPlatform`. `README.md` (Turkish) is the human-facing overview.
 
 The repo ships in the 2D profile (`GAME_2D`, `URP_2D`). Switch with `Tools/Template/Set Up as 2D Game` / `Set Up as 3D Game` and select the platform with `Tools/Template/Platform/...`, never by hand: these tools keep pipelines, defines, physics engines, packages and WebGL templates consistent.
 

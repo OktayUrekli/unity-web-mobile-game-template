@@ -11,7 +11,7 @@ The browser gives one thread, a heap that never shrinks, and download size as th
 
 - **CrazyGames:** `CrazySDK/Development Build` (localhost testing with the real SDK; doesn't run on CrazyGames itself) or `CrazySDK/Release Build` (upload the whole `Builds/CrazyGamesRelease` folder). The builder overrides Player Settings during the build and restores them afterwards, so `ProjectSettings.asset` is not what ships; it builds `EditorBuildSettings.scenes` and ignores Build Profiles. Details: `references/crazysdk-build-pipeline.md`.
 - Release builds catch only explicitly thrown exceptions: a `NullReferenceException` passes through try/catch there. Null-check SDK-facing code and reproduce release-only bugs with a Development build.
-- **Other portals:** `Web - Desktop - Release` (DXT) / `Web - Mobile - Release` (ASTC) with Unity's own Build.
+- **Yandex Games and other portals:** `Web - Desktop - Release` (DXT) / `Web - Mobile - Release` (ASTC) with Unity's own Build. Yandex local test and upload: `platform-integration/references/yandexgames.md`.
 - **Android:** `Android - Development` (APK) for phone tests, `Android - Release` (AAB) for Google Play, with Google Play selected as the platform. Keystores never go in the repo.
 - Build Profiles never carry a Player Settings override: an active one replaces the template's defines, and the SDK and bridges stop compiling.
 - `BuildValidator` (`Tools/Build/Validate Build Settings`) runs before every build and blocks a wrong scene list, a test scene or harness in the build, or a platform that doesn't match the target.

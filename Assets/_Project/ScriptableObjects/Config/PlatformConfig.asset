@@ -19,4 +19,5 @@ MonoBehaviour:
   adPlayTimeoutSeconds: 180
   leaderboardEnabled: 0
   leaderboardEncryptionKey: 
+  defaultLeaderboardId: 
   mobileTargetFrameRate: 60

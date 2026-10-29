@@ -209,8 +209,14 @@ namespace _Project.EditorTools
 
             ValidateCrazyGamesSdk(target, platform, defined, errors, warnings);
 
-            if (config.LeaderboardEnabled && string.IsNullOrWhiteSpace(config.LeaderboardEncryptionKey))
+            if (config.LeaderboardEnabled && platform == PlatformType.CrazyGames &&
+                string.IsNullOrWhiteSpace(config.LeaderboardEncryptionKey))
                 warnings.Add("PlatformConfig.LeaderboardEnabled is on but LeaderboardEncryptionKey is empty: the leaderboard will stay disabled.");
+
+            if (config.LeaderboardEnabled && platform == PlatformType.YandexGames &&
+                string.IsNullOrWhiteSpace(config.DefaultLeaderboardId))
+                warnings.Add("PlatformConfig.LeaderboardEnabled is on but DefaultLeaderboardId is empty: scores submitted " +
+                             "without a leaderboard ID are dropped. Enter the leaderboard's technical name from the Yandex Developer Console.");
         }
 
         // CrazySDK runs its SiteLock before the first scene on WebGL and crashes the game on any domain other

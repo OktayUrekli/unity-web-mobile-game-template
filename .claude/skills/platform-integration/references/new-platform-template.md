@@ -1,8 +1,8 @@
 # New platform skeleton
 
-Copy-ready structure for a new platform, modelled on `CrazyGamesPlatform`. Everything named
-`<Name>SdkBridge` / `SomeVendorApi` is a **placeholder**: replace it with the real plugin API after
-reading the plugin's source. Do not ship guessed SDK calls.
+Copy-ready structure for a new platform, modelled on `CrazyGamesPlatform`, for a made-up portal `MyPortal`.
+Everything named `<Name>SdkBridge` / `SomeVendorApi` is a **placeholder**: replace it with the real plugin API
+after reading the plugin's source. Do not ship guessed SDK calls.
 
 ## Contents
 - Files
@@ -14,7 +14,7 @@ reading the plugin's source. Do not ship guessed SDK calls.
 ## Files
 
 ```
-Assets/_Platforms/<PlatformType>/    (Assembly-CSharp, next to the SDK; folder = PlatformType name, e.g. YandexGames)
+Assets/_Platforms/<PlatformType>/    (Assembly-CSharp, next to the SDK; folder = PlatformType name, e.g. MyPortal)
   Core/<Name>Platform.cs
   Core/<Name>PlatformRegistration.cs   (registers with PlatformFactory)
   Services/<Name>AdsService.cs
@@ -34,7 +34,7 @@ SDK plug-ins that stay in a vendor folder go into `PlatformBuildAssets.VendorPlu
 ```csharp
 using System.Threading.Tasks;
 using _Core.Platform.Core;
-using _Platforms.YandexGames.Services;
+using _Platforms.MyPortal.Services;
 using _Core.Platform.Services.Achievement.Null;
 using _Core.Platform.Services.Ads.Null;
 using _Core.Platform.Services.Analytics.Null;
@@ -48,12 +48,12 @@ using _Core.Platform.Services.Purchase.Null;
 using _Core.Platform.Services.User.Null;
 using UnityEngine;
 
-namespace _Platforms.YandexGames.Core
+namespace _Platforms.MyPortal.Core
 {
     /// <summary>
-    /// Provides the Yandex Games platform implementation.
+    /// Provides the MyPortal platform implementation.
     /// </summary>
-    public class YandexPlatform : IPlatform
+    public class MyPortalPlatform : IPlatform
     {
         // Generous: the SDK script is downloaded from the network on first load.
         private const float InitTimeoutSeconds = 15f;
@@ -80,14 +80,14 @@ namespace _Platforms.YandexGames.Core
 
         public async Task InitializeAsync(PlatformManager manager)
         {
-            Debug.Log("Yandex: Initialization started.");
+            Debug.Log("MyPortal: Initialization started.");
 
-            if (YandexSdkBridge.IsAvailable)
+            if (MyPortalSdkBridge.IsAvailable)
             {
                 var completion = new TaskCompletionSource<bool>();
 
                 // TrySet* tolerates SDKs that invoke callbacks more than once.
-                YandexSdkBridge.Init(
+                MyPortalSdkBridge.Init(
                     () => completion.TrySetResult(true),
                     error => completion.TrySetResult(false));
 
@@ -95,11 +95,11 @@ namespace _Platforms.YandexGames.Core
                 _isSdkReady = completed && completion.Task.Result; // safe: task is completed
 
                 if (!_isSdkReady)
-                    Debug.LogWarning("Yandex: SDK init failed or timed out. Using fallback services.");
+                    Debug.LogWarning("MyPortal: SDK init failed or timed out. Using fallback services.");
             }
             else
             {
-                Debug.Log("Yandex: SDK is not available. Using fallback services.");
+                Debug.Log("MyPortal: SDK is not available. Using fallback services.");
             }
 
             RegisterServices(manager);
@@ -110,8 +110,8 @@ namespace _Platforms.YandexGames.Core
             // Every service must be registered; game code never null-checks them.
             if (_isSdkReady)
             {
-                manager.SetAdsService(new YandexAdsService());
-                manager.SetStorageService(new YandexDataStorage());
+                manager.SetAdsService(new MyPortalAdsService());
+                manager.SetStorageService(new MyPortalDataStorage());
             }
             else
             {
@@ -172,12 +172,12 @@ using _Core.Events.Ads;
 using _Core.Platform.Services.Ads;
 using UnityEngine;
 
-namespace _Platforms.YandexGames.Services
+namespace _Platforms.MyPortal.Services
 {
     /// <summary>
-    /// Handles advertisement operations through the Yandex Games SDK.
+    /// Handles advertisement operations through the MyPortal SDK.
     /// </summary>
-    public class YandexAdsService : IAdsService
+    public class MyPortalAdsService : IAdsService
     {
         private bool _isAdShowing;
         private bool _adStarted;
@@ -186,7 +186,7 @@ namespace _Platforms.YandexGames.Services
 
         public void ShowRewardedAd(Action<AdResult> callback)
         {
-            if (!YandexSdkBridge.IsInitialized)
+            if (!MyPortalSdkBridge.IsInitialized)
             {
                 callback?.Invoke(AdResult.NotAvailable);
                 return;
@@ -203,13 +203,13 @@ namespace _Platforms.YandexGames.Services
             _adStarted = false;
 
             // Placeholder API: map the vendor's open/rewarded/close/error callbacks.
-            YandexSdkBridge.ShowRewarded(
+            MyPortalSdkBridge.ShowRewarded(
                 onOpen: OnAdStarted,
                 onRewarded: () => FinishAd(AdResult.Completed, callback),
                 onClosedWithoutReward: () => FinishAd(AdResult.Failed, callback),
                 onError: error =>
                 {
-                    Debug.LogWarning($"Yandex: rewarded ad failed: {error}");
+                    Debug.LogWarning($"MyPortal: rewarded ad failed: {error}");
                     FinishAd(AdResult.Failed, callback);
                 });
         }
@@ -277,18 +277,18 @@ successful init.
 (same pattern as `CrazyGamesPlatformRegistration`):
 
 ```csharp
-#if PLATFORM_YANDEX
+#if PLATFORM_MYPORTAL
 using _Core.Platform.Core;
 using UnityEngine;
 
-namespace _Platforms.YandexGames.Core
+namespace _Platforms.MyPortal.Core
 {
-    public static class YandexPlatformRegistration
+    public static class MyPortalPlatformRegistration
     {
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Register()
         {
-            PlatformFactory.Register(PlatformType.YandexGames, () => new YandexPlatform());
+            PlatformFactory.Register(PlatformType.MyPortal, () => new MyPortalPlatform());
         }
     }
 }
