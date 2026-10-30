@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using _Core.EditorTools;
 using _Core.Platform.Config;
 using _Core.Platform.Core;
@@ -15,7 +16,8 @@ namespace _Project.EditorTools
     /// Validates build settings before every player build (including the CrazySDK
     /// Development/Release Build menus) and fails the build on blocking problems:
     /// scene order, test scenes/harnesses in the build, the PlatformConfig target, its PLATFORM_X define and
-    /// WebGL template, and the CrazyGames SDK compiled into another platform's WebGL build.
+    /// WebGL template, the CrazyGames SDK compiled into another platform's WebGL build, and the AdMob IDs of a
+    /// Google Play build.
     /// Before the build it also leaves the SDK plug-ins of unselected platforms out (<see cref="PlatformBuildAssets"/>).
     /// After the build it warns when the engine modules don't match the 2D/3D game profile.
     /// </summary>
@@ -29,6 +31,16 @@ namespace _Project.EditorTools
         // Assets/CrazySDK compiles only under PLATFORM_CRAZYGAMES (defineConstraints in its asmdefs);
         // the type exists in the loaded assemblies exactly when the SDK is compiled.
         private const string CrazySdkTypeName = "CrazyGames.CrazySDK";
+
+        // Google Mobile Ads keeps the AdMob app ID in its own settings asset (Assets > Google Mobile Ads > Settings).
+        private const string AdMobSettingsPath = "Assets/GoogleMobileAds/Resources/GoogleMobileAdsSettings.asset";
+        private const string AdMobAndroidAppIdProperty = "adMobAndroidAppId";
+
+        // Google's sample AdMob account: its app ID and ad unit IDs only ever show test ads.
+        private const string AdMobSamplePublisher = "ca-app-pub-3940256099942544";
+
+        // An app ID has '~' where an ad unit ID has '/'; the SDK stops the app at launch on a malformed app ID.
+        private static readonly Regex AdMobAppIdPattern = new(@"^ca-app-pub-\d+~\d+$");
 
         private static readonly string[] TestHarnessFolders =
         {
@@ -48,7 +60,8 @@ namespace _Project.EditorTools
         {
             List<string> leftOutPlugins = PlatformBuildAssets.RegisterPluginFilters();
 
-            List<string> errors = Validate(report.summary.platform, out List<string> warnings);
+            bool developmentBuild = (report.summary.options & BuildOptions.Development) != 0;
+            List<string> errors = Validate(report.summary.platform, out List<string> warnings, developmentBuild);
 
             foreach (string warning in warnings)
                 Debug.LogWarning($"[BuildValidator] {warning}");
@@ -125,7 +138,8 @@ namespace _Project.EditorTools
         [MenuItem("Tools/Build/Validate Build Settings")]
         private static void ValidateFromMenu()
         {
-            List<string> errors = Validate(EditorUserBuildSettings.activeBuildTarget, out List<string> warnings);
+            List<string> errors = Validate(EditorUserBuildSettings.activeBuildTarget, out List<string> warnings,
+                EditorUserBuildSettings.development);
 
             foreach (string warning in warnings)
                 Debug.LogWarning($"[BuildValidator] {warning}");
@@ -138,14 +152,15 @@ namespace _Project.EditorTools
 
         /// <summary>
         /// Runs every check for the given build target and returns the blocking errors.
+        /// <paramref name="developmentBuild"/> skips the checks that only matter for a release (AdMob IDs).
         /// </summary>
-        public static List<string> Validate(BuildTarget target, out List<string> warnings)
+        public static List<string> Validate(BuildTarget target, out List<string> warnings, bool developmentBuild = false)
         {
             var errors = new List<string>();
             warnings = new List<string>();
 
             ValidateScenes(errors);
-            ValidatePlatformConfig(target, errors, warnings);
+            ValidatePlatformConfig(target, developmentBuild, errors, warnings);
             ValidateGameProfile(target, warnings);
 
             return errors;
@@ -195,7 +210,8 @@ namespace _Project.EditorTools
             }
         }
 
-        private static void ValidatePlatformConfig(BuildTarget target, List<string> errors, List<string> warnings)
+        private static void ValidatePlatformConfig(BuildTarget target, bool developmentBuild, List<string> errors,
+            List<string> warnings)
         {
             string[] guids = AssetDatabase.FindAssets("t:" + nameof(PlatformConfig));
             if (guids.Length != 1)
@@ -246,6 +262,76 @@ namespace _Project.EditorTools
                 string.IsNullOrWhiteSpace(config.DefaultLeaderboardId))
                 warnings.Add("PlatformConfig.LeaderboardEnabled is on but DefaultLeaderboardId is empty: scores submitted " +
                              "without a leaderboard ID are dropped. Enter the leaderboard's technical name from the Yandex Developer Console.");
+
+            if (platform == PlatformType.GooglePlay && target == BuildTarget.Android)
+                ValidateAdMob(config, developmentBuild, errors, warnings);
+        }
+
+        // Google Mobile Ads fails the build itself when the app ID is empty; this says where it goes. Development
+        // builds always use Google's test ad units, which work with any app ID, so the ID checks are for releases.
+        private static void ValidateAdMob(PlatformConfig config, bool developmentBuild, List<string> errors,
+            List<string> warnings)
+        {
+            Object settings = AssetDatabase.LoadMainAssetAtPath(AdMobSettingsPath);
+            string appId = settings != null
+                ? new SerializedObject(settings).FindProperty(AdMobAndroidAppIdProperty)?.stringValue?.Trim()
+                : null;
+
+            if (string.IsNullOrEmpty(appId))
+            {
+                errors.Add($"The AdMob Android app ID is empty ({AdMobSettingsPath}). Enter it in Assets > Google " +
+                           $"Mobile Ads > Settings; Google's sample app ID {AdMobSamplePublisher}~3347511713 shows test ads.");
+                return;
+            }
+
+            if (!AdMobAppIdPattern.IsMatch(appId))
+            {
+                errors.Add($"The AdMob Android app ID ({appId}) is not an app ID (ca-app-pub-...~...). Enter the app ID " +
+                           "from AdMob > Apps > App settings in Assets > Google Mobile Ads > Settings; ad unit IDs " +
+                           "(ca-app-pub-.../...) go in PlatformConfig.");
+                return;
+            }
+
+            if (developmentBuild)
+                return;
+
+            string appPublisher = GetAdMobPublisher(appId);
+            if (appPublisher == AdMobSamplePublisher)
+                warnings.Add("This release build uses Google's sample AdMob app ID, so it shows test ads and earns " +
+                             "nothing. Enter your AdMob app ID in Assets > Google Mobile Ads > Settings before publishing.");
+
+            var adUnits = new (string Name, string Id)[]
+            {
+                ("AdMobInterstitialAdUnitId", config.AdMobInterstitialAdUnitId),
+                ("AdMobRewardedAdUnitId", config.AdMobRewardedAdUnitId),
+                ("AdMobBannerAdUnitId", config.AdMobBannerAdUnitId)
+            };
+
+            foreach ((string name, string id) in adUnits)
+            {
+                string adUnitId = id?.Trim();
+                if (string.IsNullOrEmpty(adUnitId) || GetAdMobPublisher(adUnitId) == AdMobSamplePublisher)
+                {
+                    warnings.Add($"PlatformConfig.{name} is empty or Google's test ad unit, so this release build " +
+                                 "shows test ads for that format and earns nothing from it.");
+                    continue;
+                }
+
+                // An app ID has '~' where an ad unit ID has '/'.
+                if (adUnitId.Contains('~'))
+                    errors.Add($"PlatformConfig.{name} is an app ID ({adUnitId}); enter the ad unit ID (ca-app-pub-.../...) " +
+                               "from AdMob > Apps > Ad units.");
+                else if (GetAdMobPublisher(adUnitId) != appPublisher)
+                    errors.Add($"PlatformConfig.{name} ({adUnitId}) belongs to another AdMob account than the app ID " +
+                               $"({appId}), so it never fills. Use the app ID and ad units of the same AdMob app.");
+            }
+        }
+
+        // "ca-app-pub-1234~5678" (app ID) and "ca-app-pub-1234/5678" (ad unit ID) both give "ca-app-pub-1234".
+        private static string GetAdMobPublisher(string id)
+        {
+            int end = id.IndexOfAny(new[] { '~', '/' });
+            return end < 0 ? id : id.Substring(0, end);
         }
 
         // CrazySDK runs its SiteLock before the first scene on WebGL and crashes the game on any domain other

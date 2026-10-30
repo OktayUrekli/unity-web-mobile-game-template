@@ -30,7 +30,7 @@ Give these to the user in Turkish, numbered, and wait for their result:
 1. Open the project in the Unity version from `ProjectSettings/ProjectVersion.txt` (the first import takes a while).
 2. `Tools/Template/New Game Setup`: company, product name (the game name), bundle id, version, orientation and its UI scaling, optional icon and loading logo; apply.
 3. `Tools/Template/Set Up as 2D Game` or `Set Up as 3D Game` to match the game (the template ships 2D). Wait for the recompile.
-4. `Tools/Template/Platform/...`: the first target platform (`CrazyGames (WebGL)` or `Yandex Games (WebGL)`).
+4. `Tools/Template/Platform/...`: the first target platform (`CrazyGames (WebGL)`, `Yandex Games (WebGL)` or `Google Play (Android)`).
 5. Save, play from `00_Bootstrap`, check that the Console shows no red errors, and commit the changed settings.
 
 ## b. Remove the template's test scenes and harnesses

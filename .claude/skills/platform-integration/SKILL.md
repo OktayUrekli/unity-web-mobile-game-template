@@ -5,7 +5,7 @@ description: The platform layer (Assets/_Core/Platform, SDK bridges in Assets/_P
 
 # Platform integration
 
-Game code talks only to `PlatformManager.Instance.<Service>` and checks `Capabilities`. If an SDK type leaks outside `Assets/_Platforms/<Name>/`, switching platforms stops being a config change. `CrazyGamesPlatform` (Unity SDK) and `YandexGamesPlatform` (own `.jslib` over the JS SDK) are the reference implementations; read the closer one before writing a new one. Details: `references/crazygames.md`, `references/yandexgames.md`.
+Game code talks only to `PlatformManager.Instance.<Service>` and checks `Capabilities`. If an SDK type leaks outside `Assets/_Platforms/<Name>/`, switching platforms stops being a config change. `CrazyGamesPlatform` (Unity SDK), `YandexGamesPlatform` (own `.jslib` over the JS SDK) and `GooglePlayPlatform` (Google Mobile Ads UPM package, Android) are the reference implementations; read the closest one before writing a new one. Details: `references/crazygames.md`, `references/yandexgames.md`, `references/googleplay.md`.
 
 Layout: `_Core/Platform/Core/` (`IPlatform`, `PlatformCapabilities`, `PlatformFactory`, `PlatformManager`), `_Core/Platform/Platforms/NullPlatform.cs`, and per service `_Core/Platform/Services/<Name>/I<Name>Service.cs` + `Null/Null<Name>Service.cs`. Bridges live in `Assets/_Platforms/<PlatformType>/Core|Services|Testing/` (namespace `_Platforms.<Name>.*`) in Assembly-CSharp, which sees SDK assemblies; `_Core` grants Assembly-CSharp its `internal` `Set*Service` and capability setters.
 
@@ -22,7 +22,8 @@ Layout: `_Core/Platform/Core/` (`IPlatform`, `PlatformCapabilities`, `PlatformFa
 
 - Bridges compile only under their define. Plug-ins under `Assets/_Platforms/<PlatformType>/` or listed in `PlatformBuildAssets.VendorPlugins` link only under it.
 - CrazySDK itself compiles only under `PLATFORM_CRAZYGAMES` through the template's asmdefs in `Assets/CrazySDK` (`CrazyGames.SDK`, `.SDK.Editor`, `.SDK.Demo`), because its SiteLock crashes WebGL builds on other portals. Unity 6000.3 ignores define constraints on native plug-ins, so `PlatformBuildAssets` leaves `crazySDK.jslib` out of other builds. Re-importing the SDK drops those asmdefs; restore them.
-- Android needs `com.unity.modules.androidjni` (Localization uses it).
+- Android needs `com.unity.modules.androidjni` (Localization and Google Mobile Ads use it).
+- An SDK that calls back on a background thread (Google Mobile Ads on Android) marshals every callback to the main thread before it touches Unity objects or `EventBus`.
 
 ## Adding a platform
 
@@ -31,7 +32,7 @@ Layout: `_Core/Platform/Core/` (`IPlatform`, `PlatformCapabilities`, `PlatformFa
 3. Wrap every bridge file, registration included, in `#if PLATFORM_<NAME>`. A MonoBehaviour that scenes reference stays compiled and gates only its SDK calls (like `CrazyGamesBannerController`).
 4. Add the define to `PlatformSetup.Defines` and a menu item, then select the platform with the menu.
 5. A portal that needs its SDK script in the page gets `Assets/WebGLTemplates/<PlatformType>/`.
-6. Gate the SDK's own code too, or it ships in every build (see CrazySDK above). Never edit SDK code.
+6. Gate the SDK's own code too, or it ships in every build (see CrazySDK above). Never edit SDK code. A package of small managed DLLs that start nothing on their own may stay ungated; its reference says so (`googleplay.md`).
 
 ## Adding a service
 
@@ -66,6 +67,7 @@ Interface (no SDK types, `Action<T>` callbacks) + Null service + `PlatformManage
 - `IGameService.Language` is the portal's language, cached at init; null when unknown.
 - Purchases (`IPurchaseService`): deliver only on `PurchaseResult.Completed` or from `GetOwnedPurchases` at start, then `Consume` consumables. Pause around the purchase dialog like an ad. A store or payment SDK goes inside its platform's bridge, never in game code.
 - The leaderboard is off unless `PlatformConfig.LeaderboardEnabled`; disabled, empty or invalid means the Null service.
+- Privacy options (`IPrivacyService`): a platform that requires an in-game way back to its consent form says so in `IsPrivacyOptionsRequired`; `PrivacyOptionsButton` shows the entry only then.
 - Log with a `"<Platform>: "` prefix.
 
 ## Verify

@@ -72,6 +72,34 @@ namespace _Core.Platform.Config
         /// </summary>
         public string DefaultLeaderboardId => defaultLeaderboardId;
 
+        [Header("Google Play (AdMob)")]
+        [Tooltip("AdMob interstitial ad unit ID (ca-app-pub-...). Empty shows Google's test ads; the Editor and " +
+                 "Development builds always do. The AdMob app ID goes in Assets > Google Mobile Ads > Settings.")]
+        [SerializeField] private string adMobInterstitialAdUnitId = "";
+
+        [Tooltip("AdMob rewarded ad unit ID (ca-app-pub-...). Empty shows Google's test ads; the Editor and " +
+                 "Development builds always do.")]
+        [SerializeField] private string adMobRewardedAdUnitId = "";
+
+        [Tooltip("AdMob banner ad unit ID (ca-app-pub-...), created as an anchored adaptive banner. Empty shows " +
+                 "Google's test ads; the Editor and Development builds always do.")]
+        [SerializeField] private string adMobBannerAdUnitId = "";
+
+        /// <summary>
+        /// AdMob interstitial ad unit ID used by Google Play release builds; empty means Google's test ad unit.
+        /// </summary>
+        public string AdMobInterstitialAdUnitId => adMobInterstitialAdUnitId;
+
+        /// <summary>
+        /// AdMob rewarded ad unit ID used by Google Play release builds; empty means Google's test ad unit.
+        /// </summary>
+        public string AdMobRewardedAdUnitId => adMobRewardedAdUnitId;
+
+        /// <summary>
+        /// AdMob banner ad unit ID used by Google Play release builds; empty means Google's test ad unit.
+        /// </summary>
+        public string AdMobBannerAdUnitId => adMobBannerAdUnitId;
+
         [Header("Mobile")]
         [Tooltip("Application.targetFrameRate on Android and iOS, which otherwise run at 30 FPS. Ignored on WebGL and desktop.")]
         [Min(15)]

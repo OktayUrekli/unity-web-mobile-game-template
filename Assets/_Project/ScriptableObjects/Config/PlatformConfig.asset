@@ -20,4 +20,7 @@ MonoBehaviour:
   leaderboardEnabled: 0
   leaderboardEncryptionKey: 
   defaultLeaderboardId: 
+  adMobInterstitialAdUnitId: 
+  adMobRewardedAdUnitId: 
+  adMobBannerAdUnitId: 
   mobileTargetFrameRate: 60

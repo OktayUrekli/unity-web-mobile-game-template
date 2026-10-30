@@ -4,7 +4,7 @@ Web ve mobil oyunlarını hızlı başlatmak için hazırlanmış, tekrar kullan
 
 Her yeni oyunda yeniden yazılan altyapı (açılış, kayıt, ayarlar, ses, reklam, platform SDK'ları, arayüz, sahne geçişi, build kontrolleri) burada hazır gelir. Sen sadece oyunun kendisini `Assets/_Project` altına yazarsın.
 
-- **Hedef platformlar:** CrazyGames ve Yandex Games (WebGL) için köprüler hazır. Google Play için yer ayrılmış durumda; köprüsü henüz olmayan platformlarda oyun yine çalışır, platform servisleri "boş" (Null) sürümlere düşer.
+- **Hedef platformlar:** CrazyGames ve Yandex Games (WebGL) için köprüler hazır. Google Play (Android) için AdMob reklam köprüsü var. Köprüsü olmayan platformlarda (iOS) oyun yine çalışır, platform servisleri "boş" (Null) sürümlere düşer.
 - **Render:** URP. 2D profilde `URP_2D`, 3D profilde mobile göre ayarlanmış `URP_3D`.
 - **Girdi:** Input System (Active Input Handling: Both).
 
@@ -20,7 +20,7 @@ Her yeni oyunda yeniden yazılan altyapı (açılış, kayıt, ayarlar, ses, rek
 | Platform | Durum |
 |---|---|
 | **CrazyGames (WebGL)** | Hazır. Tüm SDK servisleri (reklam, kayıt, kullanıcı, banner, leaderboard, HappyTime) bağlı, Release build alınıyor. Localhost'ta tarayıcıda denendi (2026-10-04): açılış, sayfa yenileme, reklamlar ve kayıt çalışıyor. Gerçek portalda henüz denenmedi. |
-| **Google Play (Android)** | Kısmen. Mobil temel hazır (60 FPS, Geri tuşu, arka plana alma, titreşim), development APK telefonda denendi (2026-10-04): menü, ses, titreşim, dil, Geri tuşu, arka plana alma ve kayıt çalışıyor; çentikli ekranda safe area tam doğru değildi; düzeltmesi (arka planlar tam ekran, içerik güvenli alanda) telefonda henüz yeniden denenmedi. `Android - Development` (APK) ve `Android - Release` (AAB) build profilleri hazır. Platform köprüsü yok: reklam, giriş ve bulut kaydı çalışmaz, kayıt cihazda (PlayerPrefs) tutulur. Reklam sağlayıcısı henüz seçilmedi. |
+| **Google Play (Android)** | Kısmen. Mobil temel hazır (60 FPS, Geri tuşu, arka plana alma, titreşim), development APK telefonda denendi (2026-10-04): menü, ses, titreşim, dil, Geri tuşu, arka plana alma ve kayıt çalışıyor; çentikli ekranda safe area tam doğru değildi; düzeltmesi (arka planlar tam ekran, içerik güvenli alanda) telefonda henüz yeniden denenmedi. `Android - Development` (APK) ve `Android - Release` (AAB) build profilleri hazır. AdMob köprüsü (Google Mobile Ads 11.6.0) eklendi: ara, ödüllü ve banner reklam, GDPR onay penceresi. Şimdilik Google'ın test kimlikleriyle çalışıyor; editörde ve telefonda henüz denenmedi. Giriş (Play Games), bulut kaydı, satın alma ve mağaza puanlaması bağlı değil; kayıt cihazda (PlayerPrefs) tutulur. |
 | **Yandex Games** | Köprü hazır: tam ekran ve ödüllü reklam, sticky banner, `LoadingAPI.ready`, oynanış başladı/durdu bildirimi, platformun duraklatma isteği, bulut kayıt, dil algılama, leaderboard ve oyun puanlama. Giriş (yetkilendirme) ve uygulama içi satın alma henüz bağlı değil. Gerçek Yandex sayfasında henüz denenmedi. |
 | **iOS** | Denenmedi. iOS modülüyle hiç build alınmadı. |
 
@@ -105,6 +105,7 @@ Reklam isteği: oyun kodu `PlatformManager.Instance.Ads` üzerinden ister → re
 | **Universal Render Pipeline** | Unity | 2D ve 3D render. |
 | **2D paketleri** (Sprite, Animation, Tilemap, SpriteShape, Aseprite, PSD Importer) | Unity | Sadece 2D profilde yüklüdür; 3D profile geçince kaldırılır. |
 | **CrazyGames SDK 5.31** | `Assets/CrazySDK` | Reklam, kayıt, kullanıcı, leaderboard, banner. Bu klasördeki SDK koduna dokunulmaz; sadece CrazyGames seçiliyken derlenir. |
+| **Google Mobile Ads** (Google, 11.6.0) | Package Manager (OpenUPM) | Google Play'de AdMob reklamları ve GDPR onay penceresi. Ayarları `Assets/GoogleMobileAds` içinde. Android kütüphanelerini bağımlılığı olan External Dependency Manager indirir. |
 | **Test Framework** | Unity | EditMode testleri (`Assets/_Core/Tests/Editor`). |
 | **UI Particle** (mob-sakai, ParticleEffectForUGUI 4.13.3) | Package Manager (git) | Hazırda duran, örnek kodda **kullanılmayan** paket: Particle System efektlerini Canvas içinde göstermek için (ödül patlaması, konfeti). Gerekmiyorsa Package Manager'dan kaldırılabilir. |
 | **UI Effect Snapshot** (mob-sakai, 1.0.1) | Package Manager (git) | Hazırda duran, **kullanılmayan** paket: ekran görüntüsünü bulanıklaştırıp popup arkasına koymak için. Gerekmiyorsa kaldırılabilir. |
@@ -117,14 +118,14 @@ Reklam isteği: oyun kodu `PlatformManager.Instance.Ads` üzerinden ister → re
 1. Bu repodan yeni bir repo oluştur (GitHub'da **Use this template** ya da kopyala) ve Unity 6000.3.21f1 ile aç.
 2. `Tools/Template/New Game Setup`: isim, bundle id, sürüm, ekran yönü, ikon, yükleme logosu.
 3. `Tools/Template/Set Up as 2D Game` veya `Set Up as 3D Game`.
-4. `Tools/Template/Platform` menüsünden hedef platformu seç (WebGL için CrazyGames ya da Yandex Games, Android için Google Play). Leaderboard ayarları `Assets/_Project/ScriptableObjects/Config/PlatformConfig.asset` içinde; leaderboard varsayılan olarak **kapalı**; açmak için `Leaderboard Enabled` işaretle. CrazyGames'te portaldan aldığın anahtarı `Leaderboard Encryption Key` alanına, Yandex'te leaderboard'un teknik adını `Default Leaderboard Id` alanına yaz.
+4. `Tools/Template/Platform` menüsünden hedef platformu seç (WebGL için CrazyGames ya da Yandex Games, Android için Google Play). Leaderboard ayarları `Assets/_Project/ScriptableObjects/Config/PlatformConfig.asset` içinde; leaderboard varsayılan olarak **kapalı**; açmak için `Leaderboard Enabled` işaretle. CrazyGames'te portaldan aldığın anahtarı `Leaderboard Encryption Key` alanına, Yandex'te leaderboard'un teknik adını `Default Leaderboard Id` alanına yaz. Google Play'deki AdMob kimlikleri için: [Google Play'de yayınlama](#google-playde-yayınlama).
 5. Oyunu `Assets/_Project` altına yaz. Başlangıç noktası olarak `02_Gameplay` sahnesi ve `GameplayController` örneğine bak.
 6. Yeni içerik `_Core`'a dokunmadan eklenir: arayüz için prefab'ı `UIConfig` listesine ekle ve `ShowPopup<SeninPopup>()` ile aç; ses için bir `SoundData` asset'i oluşturup alana sürükle; sahne için Build Settings'e ve `GameScenes` sınıfına adını ekle; havuz için `PoolConfig`'e kayıt ekle. Şablondaki örnek sesleri (`templateClickSound`, `templateMusic`) kendi seslerinle değiştir.
 7. Kayıt sınıfında bir alanın adını değiştirir, silersen ya da anlamını değiştirirsen sınıfın `CurrentVersion` değerini artır ve eski veriyi `Migrate` içinde çevir. Yeni alan eklemek için buna gerek yok.
 8. Build:
    - **WebGL (CrazyGames):** `File > Build Profiles` içinde bir Web profiline geç (hedefi WebGL yapar), sonra `CrazySDK/Development Build` veya `Release Build`. CrazySDK build'i profilin kendi ayarlarını kullanmaz, gereken ayarları kendisi yapar. Deneme ve yükleme adımları: [CrazyGames'te yayınlama](#crazygameste-yayınlama).
    - **WebGL (Yandex Games ve diğer web portalları):** Unity'nin kendi Build düğmesiyle; masaüstü ağırlıklı oyun için `Web - Desktop - Release` (DXT doku), mobil ağırlıklı oyun için `Web - Mobile - Release` (ASTC doku). Profillere Player Settings override ekleme: şablonun define'larını ezer. Yandex için deneme ve yükleme adımları: [Yandex Games'te yayınlama](#yandex-gameste-yayınlama).
-   - **Android (Google Play):** Google Play'i seç. Telefonda denemek için `Android - Development` (APK), Play Store'a yüklemek için `Android - Release` (AAB) profiliyle build al. IL2CPP + ARM64 gerekir. Yayın için `Player Settings > Publishing Settings > Keystore Manager` ile bir keystore oluştur; keystore dosyasını ve şifresini **repoya koyma** (`.gitignore` `*.keystore` / `*.jks` dosyalarını zaten dışarıda tutar), güvenli bir yerde yedekle: kaybedersen oyunu güncelleyemezsin.
+   - **Android (Google Play):** Google Play'i seç. Telefonda denemek için `Android - Development` (APK), Play Store'a yüklemek için `Android - Release` (AAB) profiliyle build al. IL2CPP + ARM64 gerekir. İlk Android build'de External Dependency Manager reklam kütüphanelerini indirir (internet gerekir) ve `Assets/Plugins/Android` ile `ProjectSettings` altına Gradle ayar dosyaları yazabilir; oluşanları commit et. Yayın için `Player Settings > Publishing Settings > Keystore Manager` ile bir keystore oluştur; keystore dosyasını ve şifresini **repoya koyma** (`.gitignore` `*.keystore` / `*.jks` dosyalarını zaten dışarıda tutar), güvenli bir yerde yedekle: kaybedersen oyunu güncelleyemezsin.
    - Build listesinde 0. sahne `00_Bootstrap` olmalı, test sahneleri (`Scenes/Test`) olmamalı; `BuildValidator` bunu senin yerine kontrol eder.
 
 ---
@@ -168,6 +169,22 @@ Yüklemek için bir Yandex Games geliştirici hesabı gerekir ([oyun ekleme](htt
 
 ---
 
+## Google Play'de yayınlama
+
+Telefonda denemek için hesap gerekmez: Development build her zaman Google'ın test reklamlarını gösterir. Gerçek reklam için bir AdMob hesabı ([admob.google.com](https://admob.google.com)), yüklemek için bir Google Play Console hesabı gerekir. Güncel kurallar: [AdMob politikaları](https://support.google.com/admob/answer/6128543), [Play Console Data safety](https://support.google.com/googleplay/android-developer/answer/10787469).
+
+1. **Hazırlık:** `Tools/Template/Platform/Google Play (Android)` seç ve `File > Build Profiles` içinde Android profiline geç. Package Manager ilk açılışta Google Mobile Ads paketini OpenUPM'den indirir.
+2. **Editörde dene:** `00_Bootstrap`'tan oynat. Konsolda `GooglePlay: Google Mobile Ads initialized.` görünmeli. Editördeki reklamlar Google'ın örnek kutularıdır. Editörde gizlilik seçenekleri hep "gerekli" görünür, `PrivacyOptionsButton` olan buton bu yüzden editörde hep görünür.
+3. **Telefonda dene:** `Android - Development` (APK) ile build al ve telefona kur. Reklamların üstünde "Test Ad" yazar. Kontrol et:
+   - Ara ve ödüllü reklamda oyun duruyor, ses kesiliyor, reklam kapanınca devam ediyor.
+   - Ödül sadece reklam sonuna kadar izlenince bir kez veriliyor; erken kapatınca verilmiyor.
+   - Banner açılıp kapanıyor ve oyunun önemli bir yerini kapatmıyor (banner ekranın altında, oyunun üstünde durur).
+4. **AdMob hesabı:** AdMob'da uygulamayı ekle; ara (interstitial), ödüllü (rewarded) ve banner (anchored adaptive) reklam birimlerini oluştur. Uygulama kimliğini (`ca-app-pub-...~...`) `Assets > Google Mobile Ads > Settings` içindeki Android App ID alanına, reklam birimi kimliklerini (`ca-app-pub-.../...`) `PlatformConfig` içindeki AdMob alanlarına yaz. Boş kalan alan test reklamı gösterir; Release build'de `[BuildValidator]` bunu uyarı olarak yazar, kimliklerin farklı hesaplara ait olması ise build'i durdurur.
+5. **Onay penceresi (GDPR):** AdMob'da `Privacy & messaging` altında bir GDPR mesajı oluşturup yayınla. Bu olmazsa AB ve İngiltere'deki oyunculara reklam gösterilmez. Oyuncu seçimini sonradan değiştirebilsin diye ayarlar ekranına bir buton koy (metni Localization tablosundan gelsin) ve ona `PrivacyOptionsButton` bileşenini ekle; gerekmeyen bölgelerde ve diğer platformlarda buton kendiliğinden gizlenir.
+6. **Yükle:** `Android - Release` (AAB) ile build al ve Play Console'a yükle. Data safety formunda reklam gösterdiğini ve reklam kimliğini (advertising ID) kullandığını bildir. Kendi canlı reklamlarına tıklama; denemeleri hep Development build ile yap.
+
+---
+
 ## Test sahneleri
 
 `Assets/_Project/Scenes/Test/` altındaki sahneler build'e girmez, editörde Play ile çalışır.
@@ -191,10 +208,11 @@ Yüklemek için bir Yandex Games geliştirici hesabı gerekir ([oyun ekleme](htt
 ```
 Assets/
   _Core/        Oyundan bağımsız altyapı kodu (her oyunda aynı kalır). Namespace = klasör yolu.
-  _Platforms/   Platform SDK köprüleri (CrazyGames, YandexGames). SDK'ya özel kod sadece burada.
+  _Platforms/   Platform SDK köprüleri (CrazyGames, YandexGames, GooglePlay). SDK'ya özel kod sadece burada.
   _Project/     Bu oyuna ait her şey: sahneler, prefab'lar, arayüz, sesler, oyun kodu, test araçları.
     ScriptableObjects/Config/   Oyunun config asset'leri (GameConfig, UIConfig, AudioConfig, SceneConfig, PoolConfig, PlatformConfig...).
   CrazySDK/, ThirdParty/, Plugins/   Dış paketler; değiştirilmez.
+  GoogleMobileAds/   Google Mobile Ads ayarları (AdMob uygulama kimliği) ve paketin link.xml dosyası.
   Settings/     URP asset'leri, build profilleri, Input Actions, Localization ayarları.
   WebGLTemplates/   Platforma özel WebGL sayfaları (YandexGames: SDK'yı yükler).
 Docs/           README görselleri (Unity bu klasörü içe aktarmaz).
@@ -212,6 +230,7 @@ Sahneler: `00_Bootstrap` (açılış), `01_MainMenu`, `02_Gameplay`. Test sahnel
 | Konsolda Input Manager'ın kullanımdan kalkacağı uyarısı | Bilinçli: Active Input Handling "Both" kalıyor. Görmezden gel. |
 | İlk açılış veya platform değişimi uzun sürüyor | Unity asset'leri içe aktarıyor ya da kodu yeniden derliyor; normal. Windows'ta `Library` klasörünü Defender taramasından çıkarmak hızlandırır. |
 | Paketler çözülemiyor (UI Particle, UI Effect Snapshot) | Git kurulu değil ya da PATH'te değil. Git'i kurup Unity'yi yeniden aç. |
+| `com.google.ads.mobile` paketi bulunamıyor | Paket OpenUPM'den gelir (`Packages/manifest.json` içindeki `scopedRegistries`). İnternet bağlantısını ve `package.openupm.com` adresine erişimi kontrol et. |
 | Metin yerine "No translation found for ..." | Anahtar İngilizce tabloda da yok. Anahtarı tabloya ekle. |
 | Build "BuildValidator" hatasıyla duruyor | Mesajı oku: genelde platform ayarı build hedefiyle uyuşmuyor. `Tools/Template/Platform` ile düzelt. |
 
@@ -225,4 +244,4 @@ Proje, Claude Code ile birlikte çalışacak şekilde belgelenmiştir: kurallar 
 
 ## Lisans
 
-Şablonun kendi kodu ve asset'leri [MIT lisansı](LICENSE) ile açıktır: ticari oyunlar dahil istediğin gibi kullanabilir, değiştirebilir ve dağıtabilirsin. İçindeki üçüncü taraf parçalar (DOTween, CrazyGames SDK, TextMesh Pro kaynakları, fontlar ve Package Manager paketleri) bu lisansa dahil değildir, her biri kendi lisansına tabidir. Liste ve koşullar [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) dosyasında.
+Şablonun kendi kodu ve asset'leri [MIT lisansı](LICENSE) ile açıktır: ticari oyunlar dahil istediğin gibi kullanabilir, değiştirebilir ve dağıtabilirsin. İçindeki üçüncü taraf parçalar (DOTween, CrazyGames SDK, Google Mobile Ads, TextMesh Pro kaynakları, fontlar ve Package Manager paketleri) bu lisansa dahil değildir, her biri kendi lisansına tabidir. Liste ve koşullar [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) dosyasında.
