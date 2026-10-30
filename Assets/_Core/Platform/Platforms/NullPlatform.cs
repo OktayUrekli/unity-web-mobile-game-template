@@ -44,6 +44,9 @@ namespace _Core.Platform.Platforms
             manager.SetPurchaseService(
                 new Services.Purchase.Null.NullPurchaseService());
 
+            manager.SetPrivacyService(
+                new Services.Privacy.Null.NullPrivacyService());
+
             // Null platform has no SDK initialization requirements.
             return Task.CompletedTask;
         }
@@ -63,6 +66,7 @@ namespace _Core.Platform.Platforms
             capabilities.SupportsReview = false;
             capabilities.SupportsShare = false;
             capabilities.SupportsPurchases = false;
+            capabilities.SupportsPrivacyOptions = false;
         }
     }
 }

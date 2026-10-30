@@ -12,6 +12,7 @@ using _Core.Platform.Services.Game.Null;
 using _Core.Platform.Services.Leaderboard;
 using _Core.Platform.Services.Leaderboard.Null;
 using _Core.Platform.Services.Purchase.Null;
+using _Core.Platform.Services.Privacy.Null;
 using _Core.Platform.Services.Review.Null;
 using _Core.Platform.Services.Share.Null;
 using _Core.Platform.Services.User.Null;
@@ -45,6 +46,7 @@ namespace _Platforms.YandexGames.Core
             capabilities.SupportsShare = false;
             // Yandex payments (ysdk.payments) are not bridged yet.
             capabilities.SupportsPurchases = false;
+            capabilities.SupportsPrivacyOptions = false;
         }
 
         public async Task InitializeAsync(PlatformManager manager)
@@ -109,6 +111,7 @@ namespace _Platforms.YandexGames.Core
             manager.SetAchievementService(new NullAchievementService());
             manager.SetShareService(new NullShareService());
             manager.SetPurchaseService(new NullPurchaseService());
+            manager.SetPrivacyService(new NullPrivacyService());
         }
 
         /// <summary>

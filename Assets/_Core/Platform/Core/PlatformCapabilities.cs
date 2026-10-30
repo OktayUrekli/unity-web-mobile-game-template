@@ -28,5 +28,7 @@ namespace _Core.Platform.Core
         public bool SupportsShare { get; internal set; }
 
         public bool SupportsPurchases { get; internal set; }
+
+        public bool SupportsPrivacyOptions { get; internal set; }
     }
 }

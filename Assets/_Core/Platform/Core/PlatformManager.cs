@@ -8,6 +8,8 @@ using _Core.Platform.Services.Game.Null;
 using _Core.Platform.Services.Leaderboard.Null;
 using _Core.Platform.Services.Purchase;
 using _Core.Platform.Services.Purchase.Null;
+using _Core.Platform.Services.Privacy;
+using _Core.Platform.Services.Privacy.Null;
 using _Core.Platform.Services.Review.Null;
 using _Core.Platform.Services.Save.Null;
 using _Core.Platform.Services.Share.Null;
@@ -55,6 +57,7 @@ namespace _Core.Platform.Core
         public IReviewService Review { get; private set; }
         public IShareService Share { get; private set; }
         public IPurchaseService Purchases { get; private set; }
+        public IPrivacyService Privacy { get; private set; }
         
         /// <summary>
         /// The platform selected in <see cref="PlatformConfig"/>. Never throws: when
@@ -195,6 +198,8 @@ namespace _Core.Platform.Core
             Share ??= new NullShareService();
             if (Purchases == null) LogMissing(nameof(Purchases));
             Purchases ??= new NullPurchaseService();
+            if (Privacy == null) LogMissing(nameof(Privacy));
+            Privacy ??= new NullPrivacyService();
         }
 
         private void LogMissing(string serviceName)
@@ -241,6 +246,9 @@ namespace _Core.Platform.Core
 
             if (Purchases is NullPurchaseService)
                 Capabilities.SupportsPurchases = false;
+
+            if (Privacy is NullPrivacyService)
+                Capabilities.SupportsPrivacyOptions = false;
         }
         
         public async Task WaitUntilReadyAsync()
@@ -309,6 +317,11 @@ namespace _Core.Platform.Core
         internal void SetPurchaseService(IPurchaseService service)
         {
             Purchases = service;
+        }
+
+        internal void SetPrivacyService(IPrivacyService service)
+        {
+            Privacy = service;
         }
     }
 }

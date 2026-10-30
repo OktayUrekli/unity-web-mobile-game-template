@@ -13,6 +13,7 @@ using _Core.Platform.Services.Authentication.Null;
 using _Core.Platform.Services.Game.Null;
 using _Core.Platform.Services.Leaderboard.Null;
 using _Core.Platform.Services.Purchase.Null;
+using _Core.Platform.Services.Privacy.Null;
 using _Core.Platform.Services.Review.Null;
 using _Core.Platform.Services.Share.Null;
 using _Core.Platform.Services.User.Null;
@@ -327,6 +328,7 @@ namespace _Core.Tests
             Assert.IsInstanceOf<NullReviewService>(manager.Review);
             Assert.IsInstanceOf<NullShareService>(manager.Share);
             Assert.IsInstanceOf<NullPurchaseService>(manager.Purchases);
+            Assert.IsInstanceOf<NullPrivacyService>(manager.Privacy);
 
             AssertAdsWrappedInPolicy(manager);
             Assert.IsInstanceOf<NullAdsService>(manager.AdPolicy.Inner);
@@ -353,6 +355,7 @@ namespace _Core.Tests
             Assert.IsFalse(capabilities.SupportsReview, nameof(capabilities.SupportsReview));
             Assert.IsFalse(capabilities.SupportsShare, nameof(capabilities.SupportsShare));
             Assert.IsFalse(capabilities.SupportsPurchases, nameof(capabilities.SupportsPurchases));
+            Assert.IsFalse(capabilities.SupportsPrivacyOptions, nameof(capabilities.SupportsPrivacyOptions));
         }
     }
 }

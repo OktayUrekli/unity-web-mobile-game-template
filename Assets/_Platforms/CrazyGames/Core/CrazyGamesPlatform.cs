@@ -14,6 +14,7 @@ using _Core.Platform.Services.Leaderboard.Null;
 using _Core.Platform.Services.Review.Null;
 using _Core.Platform.Services.Share.Null;
 using _Core.Platform.Services.Purchase.Null;
+using _Core.Platform.Services.Privacy.Null;
 using _Core.Platform.Services.Game.Null;
 using _Core.Platform.Services.Ads.Null;
 using _Core.Save.Local;
@@ -46,6 +47,8 @@ namespace _Platforms.CrazyGames.Core
             capabilities.SupportsShare = false;
             // CrazyGames sells items only through Xsolla (GetXsollaUserToken); the template has no Xsolla bridge.
             capabilities.SupportsPurchases = false;
+            // The CrazyGames SDK offers no privacy options form for the game to open.
+            capabilities.SupportsPrivacyOptions = false;
         }
 
         public async Task InitializeAsync(PlatformManager manager)
@@ -176,6 +179,9 @@ namespace _Platforms.CrazyGames.Core
 
             manager.SetPurchaseService(
                 new NullPurchaseService());
+
+            manager.SetPrivacyService(
+                new NullPrivacyService());
         }
 
         /// <summary>

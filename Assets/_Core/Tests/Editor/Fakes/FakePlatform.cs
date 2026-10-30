@@ -50,6 +50,7 @@ namespace _Core.Tests.Fakes
             capabilities.SupportsReview = true;
             capabilities.SupportsShare = true;
             capabilities.SupportsPurchases = true;
+            capabilities.SupportsPrivacyOptions = true;
         }
 
         /// <summary>
