@@ -45,6 +45,7 @@ using _Core.Platform.Services.Review.Null;
 using _Core.Save.Local;
 using _Core.Platform.Services.Share.Null;
 using _Core.Platform.Services.Purchase.Null;
+using _Core.Platform.Services.Privacy.Null;
 using _Core.Platform.Services.User.Null;
 using UnityEngine;
 
@@ -76,6 +77,7 @@ namespace _Platforms.MyPortal.Core
             capabilities.SupportsReview = false;
             capabilities.SupportsShare = false;
             capabilities.SupportsPurchases = false;
+            capabilities.SupportsPrivacyOptions = false;
         }
 
         public async Task InitializeAsync(PlatformManager manager)
@@ -129,6 +131,7 @@ namespace _Platforms.MyPortal.Core
             manager.SetReviewService(new NullReviewService());
             manager.SetShareService(new NullShareService());
             manager.SetPurchaseService(new NullPurchaseService());
+            manager.SetPrivacyService(new NullPrivacyService());
         }
 
         /// <summary>

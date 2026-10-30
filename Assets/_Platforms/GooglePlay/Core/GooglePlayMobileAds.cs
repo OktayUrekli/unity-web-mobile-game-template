@@ -66,6 +66,10 @@ namespace _Platforms.GooglePlay.Core
 
             _consentStarted = true;
 
+            // The start-up consent flow holds the form slot until it ends, so a privacy options request answers at
+            // once meanwhile: the plugin keeps a single dismiss callback for all consent forms.
+            _isFormInFlight = true;
+
             // The SDK's main-thread queue; created here because consent callbacks can arrive before MobileAds exists.
             MobileAdsEventExecutor.Initialize();
 
@@ -80,6 +84,7 @@ namespace _Platforms.GooglePlay.Core
             {
                 // Treated like a failed update. RunOnMainThread logs anything the consent check throws in turn.
                 Debug.LogException(exception);
+                _isFormInFlight = false;
                 RunOnMainThread(() => StartAdsIfAllowed(consentUpdateFailed: true));
             }
         }
@@ -165,14 +170,13 @@ namespace _Platforms.GooglePlay.Core
             {
                 // Google: on an error, CanRequestAds() still reflects the previous session's consent.
                 Debug.LogWarning($"GooglePlay: Consent information update failed ({error.ErrorCode}): {error.Message}");
+                _isFormInFlight = false;
                 RefreshPrivacyOptions();
                 StartAdsIfAllowed(consentUpdateFailed: true);
                 return;
             }
 
-            // The privacy options stay hidden until this form is done, so the player cannot open a second form.
-            _isFormInFlight = true;
-
+            // The form slot taken in Start stays held until this form is done, so the player cannot open a second one.
             try
             {
                 ConsentForm.LoadAndShowConsentFormIfRequired(formError => RunOnMainThread(() =>

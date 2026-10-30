@@ -24,7 +24,7 @@ How the project maps onto CrazySDK, and SDK behaviour verified in its source (`A
 | `CrazyGamesAuthenticationService` | `IAuthenticationService` | via the user service | Registered only when `IsUserAccountAvailable`. `SignOut` only logs; signing out on the portal reloads the page. |
 | `CrazyGamesLeaderboardService` | `ILeaderboardService` | `User.SubmitScore(encryptedScore, score)` | AES-CTR encryption with `PlatformConfig.LeaderboardEncryptionKey` (base64, from the developer portal). One leaderboard per game; `ShowLeaderboard` is a no-op. Null service when disabled or the key is empty or invalid. |
 
-Analytics, Achievement, Review, Share and Purchase → Null services. CrazyGames sells through Xsolla, which isn't bridged.
+Analytics, Achievement, Review, Share, Purchase and Privacy → Null services. CrazyGames sells through Xsolla, which isn't bridged.
 
 ## Where the SDK is available
 

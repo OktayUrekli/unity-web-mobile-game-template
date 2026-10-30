@@ -13,7 +13,7 @@ How the project maps onto the Yandex Games JS SDK v2, from the official docs (ya
 | `YandexGamesLeaderboardService` | `ILeaderboardService` | `isAvailableMethod('leaderboards.setScore')`, `leaderboards.setScore` | Null ID uses `PlatformConfig.DefaultLeaderboardId` (technical name). `ShowLeaderboard` is a no-op. |
 | `YandexGamesReviewService` | `IReviewService` | `feedback.canReview`, `feedback.requestReview` | |
 
-User, Authentication, Purchases, Analytics, Achievement and Share are Null. Sign-in (`auth.openAuthDialog`) isn't bridged because the cloud data then belongs to another player; payments (`ysdk.payments`) aren't bridged.
+User, Authentication, Purchases, Analytics, Achievement, Share and Privacy are Null. Sign-in (`auth.openAuthDialog`) isn't bridged because the cloud data then belongs to another player; payments (`ysdk.payments`) aren't bridged.
 
 ## Where the SDK is available
 

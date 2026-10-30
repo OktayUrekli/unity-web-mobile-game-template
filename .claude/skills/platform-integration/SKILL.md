@@ -32,7 +32,7 @@ Layout: `_Core/Platform/Core/` (`IPlatform`, `PlatformCapabilities`, `PlatformFa
 3. Wrap every bridge file, registration included, in `#if PLATFORM_<NAME>`. A MonoBehaviour that scenes reference stays compiled and gates only its SDK calls (like `CrazyGamesBannerController`).
 4. Add the define to `PlatformSetup.Defines` and a menu item, then select the platform with the menu.
 5. A portal that needs its SDK script in the page gets `Assets/WebGLTemplates/<PlatformType>/`.
-6. Gate the SDK's own code too, or it ships in every build (see CrazySDK above). Never edit SDK code. A package of small managed DLLs that start nothing on their own may stay ungated; its reference says so (`googleplay.md`).
+6. Gate the SDK's own code too, or it ships in every build (see CrazySDK above). Never edit SDK code. A package of small managed DLLs that start nothing on their own may stay ungated; its reference says so and names what it still adds to other builds (`googleplay.md`).
 
 ## Adding a service
 

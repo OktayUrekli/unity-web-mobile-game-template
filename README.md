@@ -22,7 +22,7 @@ Her yeni oyunda yeniden yazılan altyapı (açılış, kayıt, ayarlar, ses, rek
 | **CrazyGames (WebGL)** | Hazır. Tüm SDK servisleri (reklam, kayıt, kullanıcı, banner, leaderboard, HappyTime) bağlı, Release build alınıyor. Localhost'ta tarayıcıda denendi (2026-10-04): açılış, sayfa yenileme, reklamlar ve kayıt çalışıyor. Gerçek portalda henüz denenmedi. |
 | **Google Play (Android)** | Kısmen. Mobil temel hazır (60 FPS, Geri tuşu, arka plana alma, titreşim), development APK telefonda denendi (2026-10-04): menü, ses, titreşim, dil, Geri tuşu, arka plana alma ve kayıt çalışıyor; çentikli ekranda safe area tam doğru değildi; düzeltmesi (arka planlar tam ekran, içerik güvenli alanda) telefonda henüz yeniden denenmedi. `Android - Development` (APK) ve `Android - Release` (AAB) build profilleri hazır. AdMob köprüsü (Google Mobile Ads 11.6.0) eklendi: ara, ödüllü ve banner reklam, GDPR onay penceresi. Şimdilik Google'ın test kimlikleriyle çalışıyor; editörde ve telefonda henüz denenmedi. Giriş (Play Games), bulut kaydı, satın alma ve mağaza puanlaması bağlı değil; kayıt cihazda (PlayerPrefs) tutulur. |
 | **Yandex Games** | Köprü hazır: tam ekran ve ödüllü reklam, sticky banner, `LoadingAPI.ready`, oynanış başladı/durdu bildirimi, platformun duraklatma isteği, bulut kayıt, dil algılama, leaderboard ve oyun puanlama. Giriş (yetkilendirme) ve uygulama içi satın alma henüz bağlı değil. Gerçek Yandex sayfasında henüz denenmedi. |
-| **iOS** | Denenmedi. iOS modülüyle hiç build alınmadı. |
+| **iOS** | Denenmedi. iOS modülüyle hiç build alınmadı. Google Mobile Ads paketi kurulu olduğu sürece iOS build'ine AdMob SDK'sı da girer ve Mac'te CocoaPods gerekir; iOS'ta reklam istemeyen bir oyun paketi kaldırır. |
 
 ---
 
@@ -174,7 +174,7 @@ Yüklemek için bir Yandex Games geliştirici hesabı gerekir ([oyun ekleme](htt
 Telefonda denemek için hesap gerekmez: Development build her zaman Google'ın test reklamlarını gösterir. Gerçek reklam için bir AdMob hesabı ([admob.google.com](https://admob.google.com)), yüklemek için bir Google Play Console hesabı gerekir. Güncel kurallar: [AdMob politikaları](https://support.google.com/admob/answer/6128543), [Play Console Data safety](https://support.google.com/googleplay/android-developer/answer/10787469).
 
 1. **Hazırlık:** `Tools/Template/Platform/Google Play (Android)` seç ve `File > Build Profiles` içinde Android profiline geç. Package Manager ilk açılışta Google Mobile Ads paketini OpenUPM'den indirir.
-2. **Editörde dene:** `00_Bootstrap`'tan oynat. Konsolda `GooglePlay: Google Mobile Ads initialized.` görünmeli. Editördeki reklamlar Google'ın örnek kutularıdır. Editörde gizlilik seçenekleri hep "gerekli" görünür, `PrivacyOptionsButton` olan buton bu yüzden editörde hep görünür.
+2. **Editörde dene:** `00_Bootstrap`'tan oynat. Konsolda `GooglePlay: Google Mobile Ads initialized.` görünmeli. Editördeki reklamlar Google'ın örnek kutularıdır. Editörde gizlilik seçenekleri hep "gerekli" görünür, `PrivacyOptionsButton` olan buton bu yüzden editörde hep görünür, ama basınca form açılmaz, konsola sadece `Privacy options form failed: Form not found!` uyarısı düşer. Gerçek form telefonda, GDPR bölgesinde açılır.
 3. **Telefonda dene:** `Android - Development` (APK) ile build al ve telefona kur. Reklamların üstünde "Test Ad" yazar. Kontrol et:
    - Ara ve ödüllü reklamda oyun duruyor, ses kesiliyor, reklam kapanınca devam ediyor.
    - Ödül sadece reklam sonuna kadar izlenince bir kez veriliyor; erken kapatınca verilmiyor.
