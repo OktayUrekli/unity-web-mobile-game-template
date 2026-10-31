@@ -20,6 +20,9 @@ namespace _Core.Gameplay
     /// </summary>
     public class PauseManager : Singleton<PauseManager>
     {
+        // Unity rejects a larger Time.timeScale with an error and keeps the old value.
+        private const float MaxTimeScale = 100f;
+
         private readonly List<PauseSource> _sources = new();
         private float _timeScale = 1f;
         private bool _externalChangeLogged;
@@ -30,15 +33,16 @@ namespace _Core.Gameplay
         public bool IsPaused => _sources.Count > 0;
 
         /// <summary>
-        /// The time scale while the game is not paused (1 by default; lower for slow motion). Never write
-        /// <see cref="Time.timeScale"/> directly: this manager restores its own value every frame.
+        /// The time scale while the game is not paused (1 by default; lower for slow motion), clamped to 0..100, the
+        /// range Unity accepts. Never write <see cref="Time.timeScale"/> directly: this manager restores its own value
+        /// every frame.
         /// </summary>
         public float TimeScale
         {
             get => _timeScale;
             set
             {
-                _timeScale = Mathf.Max(0f, value);
+                _timeScale = Mathf.Clamp(value, 0f, MaxTimeScale);
                 ApplyTimeScale();
             }
         }
@@ -110,6 +114,7 @@ namespace _Core.Gameplay
                 return;
 
             _sources.Add(source);
+            LogSourcesChanged("paused by", source);
             OnSourcesChanged();
         }
 
@@ -121,6 +126,7 @@ namespace _Core.Gameplay
             if (source == null || !_sources.Remove(source))
                 return;
 
+            LogSourcesChanged("released by", source);
             OnSourcesChanged();
         }
 
@@ -129,8 +135,11 @@ namespace _Core.Gameplay
         /// </summary>
         internal void ReleaseSceneSources()
         {
-            if (_sources.RemoveAll(source => !source.PersistsAcrossScenes) > 0)
-                OnSourcesChanged();
+            if (_sources.RemoveAll(source => !source.PersistsAcrossScenes) == 0)
+                return;
+
+            LogSourcesChanged("scene change released the scene sources", null);
+            OnSourcesChanged();
         }
 
         private void LateUpdate()
@@ -150,6 +159,17 @@ namespace _Core.Gameplay
             }
 
             Time.timeScale = target;
+        }
+
+        // A game that stays frozen still has a source held: the Editor and development builds log every change with
+        // the sources left, so the Console shows which one. Release builds skip it.
+        [System.Diagnostics.Conditional("UNITY_EDITOR"), System.Diagnostics.Conditional("DEVELOPMENT_BUILD")]
+        private void LogSourcesChanged(string change, PauseSource source)
+        {
+            string held = _sources.Count > 0 ? string.Join(", ", _sources) : "none (running)";
+            Debug.Log(source != null
+                ? $"PauseManager: {change} {source.Name}; held: {held}."
+                : $"PauseManager: {change}; held: {held}.");
         }
 
         private void OnSourcesChanged()

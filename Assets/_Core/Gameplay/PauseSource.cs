@@ -8,7 +8,9 @@ namespace _Core.Gameplay
     public sealed class PauseSource
     {
         /// <summary>
-        /// A pause menu or any other in-game menu that stops play. Released automatically when the scene changes.
+        /// The pause menu. Released automatically when the scene changes. A source has one holder at a time (pausing
+        /// twice holds it once, one resume releases it), so a menu that can open over another one uses its own
+        /// <c>static readonly</c> source instead of sharing this one.
         /// </summary>
         public static readonly PauseSource Menu = new("Menu");
 
@@ -24,7 +26,7 @@ namespace _Core.Gameplay
         /// </summary>
         public static readonly PauseSource Application = new("Application", persistsAcrossScenes: true);
 
-        /// <param name="name">Shown in logs.</param>
+        /// <param name="name">Shown in the pause logs of the Editor and development builds.</param>
         /// <param name="persistsAcrossScenes">False releases this source when the active scene changes.</param>
         /// <param name="stopsPlatformGameplay">
         /// True reports gameplay as stopped to the platform (CrazyGames <c>gameplayStop</c>) while this source pauses.
@@ -37,7 +39,7 @@ namespace _Core.Gameplay
         }
 
         /// <summary>
-        /// Name shown in logs.
+        /// Name shown in the pause logs of the Editor and development builds.
         /// </summary>
         public string Name { get; }
 
