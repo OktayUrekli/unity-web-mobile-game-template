@@ -16,6 +16,18 @@ namespace _Core.UI
         private CanvasGroup _canvasGroup;
         private Sequence _sequence;
 
+        // Also read on first use: a subclass Awake that doesn't call base.Awake() leaves the field unset, and
+        // Show/Hide would otherwise throw.
+        private CanvasGroup Group
+        {
+            get
+            {
+                if (_canvasGroup == null)
+                    _canvasGroup = GetComponent<CanvasGroup>();
+                return _canvasGroup;
+            }
+        }
+
         protected virtual void Awake()
         {
             _canvasGroup = GetComponent<CanvasGroup>();
@@ -25,16 +37,18 @@ namespace _Core.UI
         {
             KillSequence();
             gameObject.SetActive(true);
-            _canvasGroup.alpha = 0f;
-            _canvasGroup.interactable = false;
-            _canvasGroup.blocksRaycasts = true;
+
+            CanvasGroup group = Group;
+            group.alpha = 0f;
+            group.interactable = false;
+            group.blocksRaycasts = true;
 
             if (panel != null)
                 panel.localScale = Vector3.one * 0.85f;
 
             _sequence = DOTween.Sequence()
-                .Append(FadeCanvas(1f, duration))
-                .OnComplete(() => _canvasGroup.interactable = true)
+                .Append(UITween.Fade(group, 1f, duration))
+                .OnComplete(() => group.interactable = true)
                 .SetUpdate(true)
                 .SetLink(gameObject);
 
@@ -50,11 +64,13 @@ namespace _Core.UI
                 return;
 
             KillSequence();
-            _canvasGroup.interactable = false;
-            _canvasGroup.blocksRaycasts = false;
+
+            CanvasGroup group = Group;
+            group.interactable = false;
+            group.blocksRaycasts = false;
 
             _sequence = DOTween.Sequence()
-                .Append(FadeCanvas(0f, duration * 0.8f))
+                .Append(UITween.Fade(group, 0f, duration * 0.8f))
                 .OnComplete(() => gameObject.SetActive(false))
                 .SetUpdate(true)
                 .SetLink(gameObject);
@@ -66,14 +82,15 @@ namespace _Core.UI
         }
 
         /// <summary>
-        /// Called at the start of <see cref="Show"/>; refresh displayed values here.
+        /// Called by <see cref="Show"/> once the popup is active and its show animation has started; refresh displayed
+        /// values here.
         /// </summary>
         protected virtual void OnShown()
         {
         }
 
         /// <summary>
-        /// Called at the start of <see cref="Hide"/>.
+        /// Called by <see cref="Hide"/> when the hide animation starts; the popup stays active until it ends.
         /// </summary>
         protected virtual void OnHidden()
         {
@@ -90,11 +107,5 @@ namespace _Core.UI
                 _sequence.Kill();
             _sequence = null;
         }
-
-        // DOTween.To instead of the CanvasGroup.DOFade module shortcut: the DOTween modules compile
-        // into Assembly-CSharp, which the _Core assembly cannot reference.
-        private Tweener FadeCanvas(float endAlpha, float time) =>
-            DOTween.To(() => _canvasGroup.alpha, alpha => _canvasGroup.alpha = alpha, endAlpha, time)
-                .SetTarget(_canvasGroup);
     }
 }

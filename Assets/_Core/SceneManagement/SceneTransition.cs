@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using _Core.Configuration;
 using _Core.Managers;
+using _Core.UI;
 using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
@@ -92,11 +93,8 @@ namespace _Core.SceneManagement
             // Continuations run on a later frame, not inside the DOTween callback.
             var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            // DOTween.To instead of the CanvasGroup.DOFade module shortcut: the DOTween modules compile
-            // into Assembly-CSharp, which the _Core assembly cannot reference.
-            DOTween.To(() => _canvasGroup.alpha, value => _canvasGroup.alpha = value, alpha, _fadeSeconds)
+            UITween.Fade(_canvasGroup, alpha, _fadeSeconds)
                 .SetUpdate(true)
-                .SetTarget(_canvasGroup)
                 .SetLink(gameObject)
                 .OnKill(() =>
                 {
