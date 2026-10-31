@@ -7,8 +7,8 @@ namespace _Core.UI
 {
     /// <summary>
     /// Boot loading screen in the bootstrap scene: game logo, game name and a progress bar.
-    /// The <see cref="Bootstrap.Bootstrapper"/> reports real progress (platform, localization, managers,
-    /// first scene load); the bar moves smoothly towards it. Destroyed with the bootstrap scene.
+    /// The <see cref="Bootstrap.Bootstrapper"/> reports real progress (platform, localization, managers) and fills
+    /// the bar before the first scene loads; the bar moves smoothly towards it. Destroyed with the bootstrap scene.
     /// Games change only the logo sprite and the name text on the prefab.
     /// </summary>
     public class LoadingScreen : MonoBehaviour

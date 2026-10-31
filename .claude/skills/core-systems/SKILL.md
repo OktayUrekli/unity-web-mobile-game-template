@@ -26,7 +26,7 @@ Read the source for signatures and order; this file keeps the design decisions a
 |---|---|---|---|
 | Screen / popup | its type: `UIManager.ShowScreen<T>()`, `ShowPopup<T>()` | prefab in `UIConfig` (root carries the `UIScreen`/`UIPopup` subclass; one prefab per type) | error, returns null |
 | Sound / music | a `SoundData` asset in a serialized field | none (Create > Audio > Sound) | warning, nothing plays |
-| Scene | a name constant in `_Project.Systems.GameScenes` | Build Settings; the first scene after boot in `SceneConfig` | error, nothing loads |
+| Scene | a name constant in `_Project.Systems.GameScenes` | Build Settings; the first scene after boot in `SceneConfig` | error, nothing loads (the boot falls back to build index 1) |
 | Pool | a string id (`const`s in one `_Project` class) | `PoolConfig` entry or `PoolManager.CreatePool` | error, `Get` returns null |
 
 ## EventBus

@@ -38,14 +38,14 @@ Exit 0 = no FAIL, 1 = at least one FAIL. Output is one line per check:
 | Check | FAIL / WARN means | Fix |
 |---|---|---|
 | Build scenes | index 0 is not `00_Bootstrap`, or a scene file is missing | Reorder/fix `EditorBuildSettings.asset` (`unity-asset-editing` skill) |
-| Test harnesses | a script from `Assets/_Project/Testing/` or `Assets/_Platforms/CrazyGames/Testing/` sits in a build scene | Remove the component/GameObject (`unity-asset-editing` recipes) or ask the user to delete it in the Editor |
-| PlatformConfig | `platform` is not the `CrazyGames` enum index | Select it with `Tools/Template/Platform/CrazyGames` (sets `Assets/_Project/ScriptableObjects/Config/PlatformConfig.asset` and the define) |
+| Test harnesses | a script from `Assets/_Project/Testing/` or a platform's `Assets/_Platforms/<Name>/Testing/` sits in a build scene | Remove the component/GameObject (`unity-asset-editing` recipes) or ask the user to delete it in the Editor |
+| PlatformConfig | `platform` is not the `CrazyGames` enum value | Select it with `Tools/Template/Platform/CrazyGames (WebGL)` (sets `Assets/_Project/ScriptableObjects/Config/PlatformConfig.asset`, the define and the WebGL template) |
 | Gameplay start/stop | no game code calls `GameplayStateManager.Instance.BeginGameplay/EndGameplay()`, or code calls `Game.GameplayStart/Stop()` directly | Call them at level start and game over (`gameplay-feature` skill; pauses are reported automatically); the platform `GameplayStart` also marks the end of QA's load-size measurement |
 | UnityEditor | `UnityEditor` referenced outside `#if UNITY_EDITOR`/`Editor/` | Guard it; the WebGL player build fails otherwise |
 | Debug input | raw `Keyboard.current`/`Input.GetKey` outside `Testing/` | Confirm it is gameplay input, not a cheat/debug key (expected: `UIManager` Back/Escape and the game's own gameplay keys) |
 | CrazyGamesSettings | file missing | Re-import the SDK; `pauseGameDuringAd` is reported as INFO only (`PauseManager` pauses ads either way) |
 
-`BuildValidator` (`Assets/_Project/Scripts/Editor/BuildValidator.cs`, also `Tools/Build/Validate Build Settings`) repeats the blocking checks before every player build: index 0 must be `00_Bootstrap`, no test scene or harness, `PlatformConfig.Platform` must match the target and its `PLATFORM_X` define, and the CrazyGames SDK must not be compiled into another platform's WebGL build. It warns when the profile define is missing, and after the build when the other profile's physics module is included.
+`BuildValidator` (`Assets/_Project/Scripts/Editor/BuildValidator.cs`, also `Tools/Build/Validate Build Settings`) runs before every player build and blocks it on the problems its class summary lists; its warnings don't block. It checks more than preflight, so a build can still stop after preflight passed: read its Console errors.
 
 INFO lines (Debug.Log count, Resources folders, runtime packages, Editor-only SDK simulation flags)
 are for the report; mention anything that looks unused or noisy, but they do not fail the release.

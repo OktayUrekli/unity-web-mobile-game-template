@@ -17,11 +17,13 @@ namespace _Project.EditorTools
     /// <summary>
     /// Validates build settings before every player build (including the CrazySDK
     /// Development/Release Build menus) and fails the build on blocking problems:
-    /// scene order, SceneConfig's first scene missing from the build, test scenes/harnesses in the build, the
-    /// PlatformConfig target, its PLATFORM_X define and WebGL template, the CrazyGames SDK compiled into another
-    /// platform's WebGL build, and the AdMob IDs of a Google Play build.
+    /// the scene list (empty, a missing scene file, index 0 not the bootstrap scene), SceneConfig's first scene
+    /// missing from the build, test scenes/harnesses in the build, the PlatformConfig asset (exactly one) and its
+    /// target, PLATFORM_X define and WebGL template, the CrazyGames SDK compiled into another platform's WebGL build,
+    /// and the AdMob IDs of a Google Play build.
     /// Before the build it also leaves the SDK plug-ins of unselected platforms out (<see cref="PlatformBuildAssets"/>).
-    /// After the build it warns when the engine modules don't match the 2D/3D game profile.
+    /// After the build it logs an error for file names Yandex rejects and warns when the engine modules don't match
+    /// the 2D/3D game profile.
     /// </summary>
     public class BuildValidator : IPreprocessBuildWithReport, IPostprocessBuildWithReport
     {
