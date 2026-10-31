@@ -47,11 +47,14 @@ namespace _Core.SceneManagement
         }
 
         /// <summary>
-        /// Reloads the active scene.
+        /// Reloads the active scene. It must be in Build Settings (a test scene usually isn't).
         /// </summary>
         public static void ReloadCurrentScene()
         {
             string sceneName = SceneManager.GetActiveScene().name;
+            if (!CanLoad(sceneName))
+                return;
+
             EventBus.Publish(new SceneLoadStartedEvent(sceneName));
             SceneManager.LoadScene(sceneName);
         }
