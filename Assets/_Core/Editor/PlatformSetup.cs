@@ -116,7 +116,8 @@ namespace _Core.EditorTools
 
             var serialized = new SerializedObject(config);
             SerializedProperty platformProperty = serialized.FindProperty("platform");
-            platformProperty.enumValueIndex = (int)platform;
+            // The asset stores the enum value (not its index among the names); PlatformType values are explicit.
+            platformProperty.intValue = (int)platform;
             serialized.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(config);
 
