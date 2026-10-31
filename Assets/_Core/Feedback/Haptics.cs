@@ -10,14 +10,17 @@ namespace _Core.Feedback
     public static class Haptics
     {
         /// <summary>
-        /// True on platforms where <see cref="Vibrate"/> can vibrate (Android, iOS; also in the Editor while one
-        /// of them is the build target). Settings screens hide the vibration toggle elsewhere.
+        /// True where <see cref="Vibrate"/> can vibrate: Android and iOS devices that have a vibrator (tablets and
+        /// Chromebooks often have none), and the Editor while one of them is the build target. Settings screens hide
+        /// the vibration toggle elsewhere.
         /// </summary>
         public static bool IsSupported
         {
             get
             {
-#if UNITY_ANDROID || UNITY_IOS
+#if (UNITY_ANDROID || UNITY_IOS) && !UNITY_EDITOR
+                return SystemInfo.supportsVibration;
+#elif UNITY_ANDROID || UNITY_IOS
                 return true;
 #else
                 return false;
