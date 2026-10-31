@@ -133,7 +133,10 @@ var YandexGamesBridge = {
   // initialized and only the cloud saves fall back to local ones, instead of C# timing out the whole platform.
   YandexGames_Init: function (receiverPtr, dataTimeoutMs) {
     YandexGames.receiver = UTF8ToString(receiverPtr);
-    var dataDeadline = Date.now() + dataTimeoutMs;
+
+    // A monotonic clock like C#'s Time.realtimeSinceStartup: a wall-clock correction can't delay the answer past the
+    // C# timeout.
+    var dataDeadline = performance.now() + dataTimeoutMs;
 
     // Registered before SaveManager.jslib's pagehide listener (the save manager starts after the platform) and in
     // the capture phase, so the flag is already set when that listener's save reaches flushData.
@@ -173,7 +176,7 @@ var YandexGamesBridge = {
         });
       });
       var timeout = new Promise(function (resolve, reject) {
-        setTimeout(function () { reject(new Error('timed out')); }, Math.max(0, dataDeadline - Date.now()));
+        setTimeout(function () { reject(new Error('timed out')); }, Math.max(0, dataDeadline - performance.now()));
       });
 
       // A load that finishes after the deadline is ignored: the game already runs on local saves.

@@ -24,9 +24,11 @@ namespace _Platforms.YandexGames.Core
         // A request the SDK has not answered by then fails, so a lost promise cannot block a save forever.
         private const float RequestTimeoutSeconds = 30f;
 
-        // Share of the init timeout the player data may use. Slower data leaves only the cloud saves out (local saves
+        // The player data may use the init timeout minus this margin, and at least the given share of it, so the SDK's
+        // answer still arrives before the init timeout. Slower data leaves only the cloud saves out (local saves
         // instead); the SDK itself (ads, pause events, language) still counts as initialized.
-        private const float PlayerDataShareOfInitTimeout = 0.7f;
+        private const float PlayerDataMarginSeconds = 1f;
+        private const float MinPlayerDataShareOfInitTimeout = 0.7f;
 
         private enum InitState
         {
@@ -167,7 +169,10 @@ namespace _Platforms.YandexGames.Core
             {
                 EnsureReceiver();
                 _initState = InitState.Running;
-                CallInit(ReceiverName, Mathf.RoundToInt(Mathf.Max(0f, timeoutSeconds) * PlayerDataShareOfInitTimeout * 1000f));
+                float initSeconds = Mathf.Max(0f, timeoutSeconds);
+                float dataSeconds = Mathf.Max(
+                    initSeconds - PlayerDataMarginSeconds, initSeconds * MinPlayerDataShareOfInitTimeout);
+                CallInit(ReceiverName, Mathf.RoundToInt(dataSeconds * 1000f));
             }
 
             float deadline = Time.realtimeSinceStartup + timeoutSeconds;
