@@ -12,7 +12,6 @@ PLATFORM_CONFIG="Assets/_Project/ScriptableObjects/Config/PlatformConfig.asset"
 PLATFORM_ENUM="Assets/_Core/Platform/Core/PlatformType.cs"
 CRAZY_SETTINGS="Assets/CrazySDK/Resources/CrazyGamesSettings.asset"
 PACKAGE_MANIFEST="Packages/manifest.json"
-TEST_HARNESS_DIRS=(Assets/_Project/Testing Assets/_Platforms/CrazyGames/Testing)
 GAME_CODE_DIRS=(Assets/_Core Assets/_Project Assets/_Platforms)
 PLATFORM_LAYER_REGEX="^(Assets/_Core/Platform|Assets/_Platforms)/"
 BOOTSTRAP_SCENE_NAME="00_Bootstrap"
@@ -34,6 +33,11 @@ if [ ! -f "$root/ProjectSettings/ProjectVersion.txt" ]; then
     exit 2
 fi
 cd "$root" || exit 2
+
+# Manual test harnesses (BuildValidator uses the same folders): Assets/_Project/Testing and every platform's Testing.
+shopt -s nullglob
+TEST_HARNESS_DIRS=(Assets/_Project/Testing Assets/_Platforms/*/Testing)
+shopt -u nullglob
 
 guid_of() { grep -m1 '^guid:' "$1.meta" 2>/dev/null | tr -d '\r' | awk '{print $2}'; }
 
@@ -72,22 +76,28 @@ done
 [ $harness_hits -eq 0 ] && pass "No test harness scripts (${TEST_HARNESS_DIRS[*]}) in build scenes."
 
 # ---------- 3. PlatformConfig targets CrazyGames ----------
-enum_names="$(tr -d '\r' < "$PLATFORM_ENUM" | sed -n '/enum PlatformType/,/}/p' | sed 's://.*::' \
-    | tr -d '{} \t' | grep -v '^enumPlatformType$' | tr '\n' ' ' | tr ',' '\n' | tr -d ' ' | grep -v '^$')"
-expected_index="$(echo "$enum_names" | grep -nx "$TARGET_PLATFORM" | cut -d: -f1)"
-actual_index="$(tr -d '\r' < "$PLATFORM_CONFIG" | awk '/^  platform:/ {print $2}')"
-if [ -z "$expected_index" ] || [ -z "$actual_index" ]; then
+# PlatformType gives each member an explicit value (Name = N); an enum without values counts from 0 in order.
+enum_body="$(tr -d '\r' < "$PLATFORM_ENUM" | sed -n '/enum PlatformType/,/}/p' | sed 's://.*::' | tr -d '{} \t')"
+expected_value="$(echo "$enum_body" | tr ',' '\n' | grep -oE "^$TARGET_PLATFORM=[0-9]+" | cut -d= -f2)"
+if [ -z "$expected_value" ]; then
+    expected_index="$(echo "$enum_body" | grep -v 'enumPlatformType$' | tr '\n' ',' | tr ',' '\n' | grep -v '^$' \
+        | sed 's/=.*//' | grep -nx "$TARGET_PLATFORM" | cut -d: -f1)"
+    [ -n "$expected_index" ] && expected_value=$((expected_index - 1))
+fi
+actual_value="$(tr -d '\r' < "$PLATFORM_CONFIG" | awk '/^  platform:/ {print $2}')"
+if [ -z "$expected_value" ] || [ -z "$actual_value" ]; then
     fail "Could not read PlatformType enum or $PLATFORM_CONFIG 'platform' value."
-elif [ "$actual_index" -eq $((expected_index - 1)) ]; then
-    pass "PlatformConfig.platform = $actual_index ($TARGET_PLATFORM)."
+elif [ "$actual_value" -eq "$expected_value" ]; then
+    pass "PlatformConfig.platform = $actual_value ($TARGET_PLATFORM)."
 else
-    fail "PlatformConfig.platform = $actual_index, expected $((expected_index - 1)) ($TARGET_PLATFORM)."
+    fail "PlatformConfig.platform = $actual_value, expected $expected_value ($TARGET_PLATFORM)."
 fi
 
 # ---------- 4. Gameplay start/stop reported by game code (via GameplayStateManager) ----------
 GAMEPLAY_STATE_MANAGER="Assets/_Core/Gameplay/GameplayStateManager.cs"
+# _Core never reports gameplay itself; its EditMode tests call Begin/EndGameplay and must not count as game code.
 game_calls="$(grep -rlE '\.(BeginGameplay|EndGameplay)\(' --include=*.cs "${GAME_CODE_DIRS[@]}" 2>/dev/null \
-    | grep -vE "$PLATFORM_LAYER_REGEX")"
+    | grep -vE "$PLATFORM_LAYER_REGEX" | grep -vE '^Assets/_Core/')"
 direct_calls="$(grep -rlE '\.Game\.Gameplay(Start|Stop)\(' --include=*.cs "${GAME_CODE_DIRS[@]}" 2>/dev/null \
     | grep -vE "$PLATFORM_LAYER_REGEX" | grep -v "^$GAMEPLAY_STATE_MANAGER$")"
 if [ -z "$game_calls" ]; then

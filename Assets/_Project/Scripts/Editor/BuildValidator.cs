@@ -2,9 +2,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using _Core.Configuration;
 using _Core.EditorTools;
 using _Core.Platform.Config;
 using _Core.Platform.Core;
+using _Core.SceneManagement;
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
@@ -15,9 +17,9 @@ namespace _Project.EditorTools
     /// <summary>
     /// Validates build settings before every player build (including the CrazySDK
     /// Development/Release Build menus) and fails the build on blocking problems:
-    /// scene order, test scenes/harnesses in the build, the PlatformConfig target, its PLATFORM_X define and
-    /// WebGL template, the CrazyGames SDK compiled into another platform's WebGL build, and the AdMob IDs of a
-    /// Google Play build.
+    /// scene order, SceneConfig's first scene missing from the build, test scenes/harnesses in the build, the
+    /// PlatformConfig target, its PLATFORM_X define and WebGL template, the CrazyGames SDK compiled into another
+    /// platform's WebGL build, and the AdMob IDs of a Google Play build.
     /// Before the build it also leaves the SDK plug-ins of unselected platforms out (<see cref="PlatformBuildAssets"/>).
     /// After the build it warns when the engine modules don't match the 2D/3D game profile.
     /// </summary>
@@ -42,11 +44,13 @@ namespace _Project.EditorTools
         // An app ID has '~' where an ad unit ID has '/'; the SDK stops the app at launch on a malformed app ID.
         private static readonly Regex AdMobAppIdPattern = new(@"^ca-app-pub-\d+~\d+$");
 
-        private static readonly string[] TestHarnessFolders =
-        {
-            "Assets/_Project/Testing/",
-            "Assets/_Platforms/CrazyGames/Testing/"
-        };
+        // A malformed ad unit ID never loads an ad, and nothing reports it at runtime.
+        private static readonly Regex AdMobAdUnitIdPattern = new(@"^ca-app-pub-\d+/\d+$");
+
+        // Manual test harnesses: Assets/_Project/Testing/ and Assets/_Platforms/<Name>/Testing/.
+        private const string ProjectTestHarnessFolder = "Assets/_Project/Testing/";
+        private const string PlatformsFolder = "Assets/_Platforms/";
+        private const string PlatformTestHarnessSubfolder = "/Testing/";
 
         /// <summary>
         /// Runs before other build preprocessors.
@@ -190,6 +194,8 @@ namespace _Project.EditorTools
             if (Path.GetFileNameWithoutExtension(scenes[0]) != BootstrapSceneName)
                 errors.Add($"Build index 0 is '{scenes[0]}', expected '{BootstrapSceneName}' (it initializes all systems).");
 
+            ValidateFirstScene(scenes, errors);
+
             foreach (string scene in scenes)
             {
                 if (!File.Exists(scene))
@@ -204,9 +210,37 @@ namespace _Project.EditorTools
                 // Scene dependencies include the MonoScripts of its components.
                 foreach (string dependency in AssetDatabase.GetDependencies(scene, false))
                 {
-                    if (dependency.EndsWith(".cs") && TestHarnessFolders.Any(dependency.StartsWith))
+                    if (dependency.EndsWith(".cs") && IsTestHarness(dependency))
                         errors.Add($"Test harness {Path.GetFileName(dependency)} is used in build scene {scene}.");
                 }
+            }
+        }
+
+        private static bool IsTestHarness(string assetPath)
+        {
+            return assetPath.StartsWith(ProjectTestHarnessFolder) ||
+                   (assetPath.StartsWith(PlatformsFolder) && assetPath.Contains(PlatformTestHarnessSubfolder));
+        }
+
+        // The Bootstrapper loads SceneConfig.FirstScene by name after boot; a renamed or removed scene would load
+        // build index 1 instead (or nothing).
+        private static void ValidateFirstScene(string[] enabledScenes, List<string> errors)
+        {
+            foreach (string guid in AssetDatabase.FindAssets("t:" + nameof(GameConfig)))
+            {
+                var gameConfig = AssetDatabase.LoadAssetAtPath<GameConfig>(AssetDatabase.GUIDToAssetPath(guid));
+                SceneConfig sceneConfig = gameConfig != null ? gameConfig.SceneConfig : null;
+                if (sceneConfig == null)
+                    continue;
+
+                string firstScene = sceneConfig.FirstScene;
+                bool found = enabledScenes
+                    .Skip(1)
+                    .Any(scene => Path.GetFileNameWithoutExtension(scene) == firstScene);
+
+                if (!found)
+                    errors.Add($"SceneConfig.FirstScene is '{firstScene}', which is not an enabled scene after " +
+                               $"{BootstrapSceneName} in Build Settings ({AssetDatabase.GetAssetPath(sceneConfig)}).");
             }
         }
 
@@ -321,6 +355,9 @@ namespace _Project.EditorTools
                 if (adUnitId.Contains('~'))
                     errors.Add($"PlatformConfig.{name} is an app ID ({adUnitId}); enter the ad unit ID (ca-app-pub-.../...) " +
                                "from AdMob > Apps > Ad units.");
+                else if (!AdMobAdUnitIdPattern.IsMatch(adUnitId))
+                    errors.Add($"PlatformConfig.{name} ({adUnitId}) is not an ad unit ID (ca-app-pub-.../...); copy it " +
+                               "again from AdMob > Apps > Ad units.");
                 else if (GetAdMobPublisher(adUnitId) != appPublisher)
                     errors.Add($"PlatformConfig.{name} ({adUnitId}) belongs to another AdMob account than the app ID " +
                                $"({appId}), so it never fills. Use the app ID and ad units of the same AdMob app.");
