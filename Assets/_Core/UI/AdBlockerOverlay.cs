@@ -3,15 +3,17 @@ using _Core.Events.Ads;
 using _Core.Localization;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.Localization;
 using UnityEngine.UI;
 
 namespace _Core.UI
 {
     /// <summary>
-    /// Full-screen overlay that blocks all UI input while an advertisement request is in progress
-    /// (from <see cref="AdRequestedEvent"/> until <see cref="AdRequestCompletedEvent"/>).
-    /// Created in code by the Bootstrapper and drawn above every other canvas.
+    /// Blocks UI input while an advertisement request is in progress (from <see cref="AdRequestedEvent"/> until
+    /// <see cref="AdRequestCompletedEvent"/>): a full-screen raycast target stops pointers, and the EventSystem's
+    /// navigation events (keyboard and gamepad move, submit, cancel) are off. Back/Escape is guarded by
+    /// <see cref="UIManager"/>. Created in code by the Bootstrapper and drawn above every other canvas.
     /// </summary>
     public class AdBlockerOverlay : MonoBehaviour
     {
@@ -22,6 +24,10 @@ namespace _Core.UI
 
         private GameObject _overlay;
         private TextMeshProUGUI _label;
+
+        // The EventSystem whose navigation this overlay turned off, and the value to give back.
+        private EventSystem _blockedEventSystem;
+        private bool _sendNavigationEventsBefore;
 
         /// <summary>
         /// True while the overlay is blocking input.
@@ -44,6 +50,9 @@ namespace _Core.UI
         {
             EventBus.Unsubscribe<AdRequestedEvent>(OnAdRequested);
             EventBus.Unsubscribe<AdRequestCompletedEvent>(OnAdRequestCompleted);
+
+            // The completion event no longer arrives here; don't leave keyboard and gamepad navigation off.
+            SetNavigationBlocked(false);
         }
 
         private void OnDestroy()
@@ -72,6 +81,30 @@ namespace _Core.UI
         {
             if (_overlay != null)
                 _overlay.SetActive(blocking);
+
+            SetNavigationBlocked(blocking);
+        }
+
+        // The raycast target stops pointers only; the input module still sends move and submit to the selected
+        // button behind the overlay. Restores only what this overlay changed (Awake's unblock writes nothing).
+        private void SetNavigationBlocked(bool blocked)
+        {
+            if (blocked)
+            {
+                EventSystem eventSystem = EventSystem.current;
+                if (_blockedEventSystem != null || eventSystem == null)
+                    return;
+
+                _blockedEventSystem = eventSystem;
+                _sendNavigationEventsBefore = eventSystem.sendNavigationEvents;
+                eventSystem.sendNavigationEvents = false;
+                return;
+            }
+
+            if (_blockedEventSystem != null)
+                _blockedEventSystem.sendNavigationEvents = _sendNavigationEventsBefore;
+
+            _blockedEventSystem = null;
         }
 
         /// <summary>

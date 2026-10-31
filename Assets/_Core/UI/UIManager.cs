@@ -8,6 +8,7 @@ using _Core.Managers;
 using _Core.Platform.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
 namespace _Core.UI
 {
@@ -23,6 +24,10 @@ namespace _Core.UI
 
         private Transform _screensRoot;
         private Transform _popupsRoot;
+
+        // From SceneLoadStartedEvent until the new scene is active: the old scene's Back handlers are still
+        // subscribed, and a popup they opened after HideAll would carry over into the next scene.
+        private bool _isSceneLoading;
 
         /// <summary>
         /// The popup currently on top, or null.
@@ -50,17 +55,25 @@ namespace _Core.UI
 
             // Screens and popups belong to the scene that showed them.
             EventBus.Subscribe<SceneLoadStartedEvent>(OnSceneLoadStarted);
+            SceneManager.activeSceneChanged += OnActiveSceneChanged;
         }
 
         protected override void OnDestroy()
         {
             EventBus.Unsubscribe<SceneLoadStartedEvent>(OnSceneLoadStarted);
+            SceneManager.activeSceneChanged -= OnActiveSceneChanged;
             base.OnDestroy();
         }
 
         private void OnSceneLoadStarted(SceneLoadStartedEvent gameEvent)
         {
+            _isSceneLoading = true;
             HideAll();
+        }
+
+        private void OnActiveSceneChanged(Scene previous, Scene next)
+        {
+            _isSceneLoading = false;
         }
 
         private void Update()
@@ -70,7 +83,11 @@ namespace _Core.UI
             if (keyboard == null || !keyboard.escapeKey.wasPressedThisFrame)
                 return;
 
-            // The ad blocker overlay blocks pointers only; ignore Back while an ad request runs.
+            // Back is not handled while a scene loads (see _isSceneLoading).
+            if (_isSceneLoading)
+                return;
+
+            // The ad blocker overlay doesn't cover Back; ignore it while an ad request runs.
             PlatformManager platform = PlatformManager.Instance;
             if (platform != null && platform.Ads != null && platform.Ads.IsAdShowing)
                 return;
