@@ -69,6 +69,11 @@ namespace _Core.Bootstrap
                 Debug.LogException(exception);
             }
 
+            // Play Mode stopped during the boot: the continuation still runs in the Editor, and a scene load would
+            // then start in Edit Mode.
+            if (this == null)
+                return;
+
             try
             {
                 await LoadFirstSceneAsync();
@@ -175,14 +180,17 @@ namespace _Core.Bootstrap
             SceneLoader.Load(ResolveFirstScene());
         }
 
-        // SceneConfig.FirstScene, or the scene after the bootstrap scene in Build Settings when it is not set.
+        // SceneConfig.FirstScene, or the scene after the bootstrap scene in Build Settings when it is not set or not
+        // in Build Settings (a renamed scene would otherwise leave the boot on the full loading bar).
         private static string ResolveFirstScene()
         {
             string firstScene = SceneLoader.FirstScene;
-            if (!string.IsNullOrEmpty(firstScene))
+            if (!string.IsNullOrEmpty(firstScene) && Application.CanStreamedLevelBeLoaded(firstScene))
                 return firstScene;
 
-            Debug.LogError("Bootstrap: SceneConfig has no first scene; loading build index 1.");
+            Debug.LogError(string.IsNullOrEmpty(firstScene)
+                ? "Bootstrap: SceneConfig has no first scene; loading build index 1."
+                : $"Bootstrap: SceneConfig's first scene '{firstScene}' is not in Build Settings; loading build index 1.");
             string path = UnityEngine.SceneManagement.SceneUtility.GetScenePathByBuildIndex(1);
             return System.IO.Path.GetFileNameWithoutExtension(path);
         }
@@ -210,6 +218,10 @@ namespace _Core.Bootstrap
             // Never throws: on failure the platform registers Null services.
             await TrackAsync(platformManager.InitializeAsync(), PlatformWeight);
 
+            // Play Mode stopped while waiting: new managers would land in the edit-mode scene.
+            if (this == null)
+                return;
+
             // Each manager is created in isolation so one failing manager
             // does not prevent the others from being created.
             // AudioManager comes before SettingsManager: it subscribes to the audio settings SettingsManager.Init publishes.
@@ -219,6 +231,9 @@ namespace _Core.Bootstrap
 
             // Awaited so the menu opens with its texts already in the player's language (no flicker).
             await RunStepAsync(nameof(InitLocalizationAsync), InitLocalizationAsync);
+            if (this == null)
+                return;
+
             SetProgress(PlatformWeight + LocalizationWeight);
 
             RunStep(nameof(CreatePoolManager), CreatePoolManager);
@@ -342,11 +357,11 @@ namespace _Core.Bootstrap
             obj.AddComponent<AdBlockerOverlay>();
         }
 
-        private PlatformManager  CreatePlatformManager()
+        private PlatformManager CreatePlatformManager()
         {
             GameObject obj = new GameObject("PlatformManager");
             obj.transform.SetParent(_persistentRoot);
-            return  obj.AddComponent<PlatformManager>();
+            return obj.AddComponent<PlatformManager>();
         }
         
         private void CreateEventSystem()
