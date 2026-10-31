@@ -196,6 +196,22 @@ namespace _Core.Tests
             Assert.IsTrue(pool.IsActive(spawned));
         }
 
+        [Test]
+        public void Release_UnderScaledParent_KeepsThePrefabScaleOnReuse()
+        {
+            var pool = new ObjectPool(_prefab, 1, _parent);
+            Transform scaledParent = CreateGameObject("ScaledParent").transform;
+            scaledParent.localScale = new Vector3(2f, 2f, 2f);
+
+            GameObject first = pool.Get(Vector3.zero, Quaternion.identity, scaledParent);
+            pool.Release(first);
+            GameObject second = pool.Get(Vector3.zero, Quaternion.identity, scaledParent);
+
+            Assert.AreEqual(first, second, "The released object must be reused.");
+            Assert.That(Vector3.Distance(_prefab.transform.localScale, second.transform.localScale), Is.LessThan(0.0001f),
+                "A reused object must keep the prefab's local scale, not the old parent's world scale.");
+        }
+
         // ---------- Helpers ----------
 
         private GameObject CreateGameObject(string name)

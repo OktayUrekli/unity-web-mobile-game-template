@@ -44,7 +44,7 @@ namespace _Core.Pooling
 
         /// <summary>
         /// Returns an object from the pool, activated, then calls <see cref="IPoolable.OnSpawn"/>.
-        /// It stays under the pool's parent at its last position.
+        /// It stays under the pool's parent with the local position, rotation and scale it had when it was released.
         /// </summary>
         public GameObject Get()
         {
@@ -72,7 +72,9 @@ namespace _Core.Pooling
         }
 
         /// <summary>
-        /// Returns an object back to the pool.
+        /// Returns an object back to the pool. It moves under the pool's parent with its local position, rotation and
+        /// scale kept, so a later <see cref="Get(Vector3, Quaternion, Transform)"/> under a scaled parent (a UI canvas,
+        /// a board scaled to fit the screen) gives it the prefab's size again.
         /// </summary>
         public void Release(GameObject obj)
         {
@@ -93,7 +95,10 @@ namespace _Core.Pooling
             }
 
             obj.SetActive(false);
-            obj.transform.SetParent(_parent);
+
+            // worldPositionStays = false: keeping the world pose would bake the old parent's scale into the local
+            // scale, so the object would shrink or grow on every reuse under a scaled parent.
+            obj.transform.SetParent(_parent, false);
 
             _pool.Enqueue(obj);
             _inPool.Add(obj);
