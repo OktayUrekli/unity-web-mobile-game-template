@@ -6,6 +6,9 @@ namespace _Core.Events.Platform
     /// </summary>
     public readonly struct PlatformAudioMuteChangedEvent : IGameEvent
     {
+        /// <summary>
+        /// The new value of <c>IGameService.IsAudioMutedByPlatform</c>.
+        /// </summary>
         public bool IsMuted { get; }
 
         public PlatformAudioMuteChangedEvent(bool isMuted)

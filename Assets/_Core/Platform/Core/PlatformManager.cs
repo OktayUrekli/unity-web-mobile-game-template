@@ -35,28 +35,92 @@ using UnityEngine;
 namespace _Core.Platform.Core
 {
     /// <summary>
-    /// Manages the active platform and its services.
+    /// Manages the active platform and its services. Every service property is non-null once
+    /// <see cref="InitializeAsync"/> has finished, even after a failure (Null implementations then); before that it
+    /// may be null.
     /// </summary>
     public class PlatformManager : Singleton<PlatformManager>
     {
         // Set once the missing platform config has been reported, so repeated reads of CurrentPlatform log one error.
         private bool _missingConfigLogged;
 
+        /// <summary>
+        /// Initialization progress. Services work in both <see cref="PlatformState.Ready"/> and
+        /// <see cref="PlatformState.Failed"/>.
+        /// </summary>
         public PlatformState State { get; private set; } = PlatformState.None;
+
+        /// <summary>
+        /// True only when initialization succeeded. It is false after a failure, yet every service then works as its
+        /// Null implementation.
+        /// </summary>
         public bool IsReady => State == PlatformState.Ready;
+
+        /// <summary>
+        /// What the current platform supports; valid once <see cref="InitializeAsync"/> has finished.
+        /// </summary>
         public PlatformCapabilities Capabilities { get; } = new();
         
+        /// <summary>
+        /// Gameplay reports and the portal's settings (language, mute and pause requests).
+        /// </summary>
         public IGameService Game { get; private set; }
+
+        /// <summary>
+        /// The platform's ads service wrapped in <see cref="AdPolicyService"/>; the same object as
+        /// <see cref="AdPolicy"/>.
+        /// </summary>
         public IAdsService Ads { get; private set; }
+
+        /// <summary>
+        /// The platform's save storage, or the PlayerPrefs fallback. Game code saves through <c>SaveManager</c>, which
+        /// caches this storage.
+        /// </summary>
         public ISaveStorage Storage { get; private set; }
+
+        /// <summary>
+        /// The player's portal account.
+        /// </summary>
         public IUserService User { get; private set; }
+
+        /// <summary>
+        /// Analytics events for the platform.
+        /// </summary>
         public IAnalyticsService Analytics { get; private set; }
+
+        /// <summary>
+        /// Sign-in to the platform.
+        /// </summary>
         public IAuthenticationService Authentication { get; private set; }
+
+        /// <summary>
+        /// Platform leaderboards; off unless <c>PlatformConfig.LeaderboardEnabled</c> is set.
+        /// </summary>
         public ILeaderboardService Leaderboard { get; private set; }
+
+        /// <summary>
+        /// Platform achievements.
+        /// </summary>
         public IAchievementService Achievement { get; private set; }
+
+        /// <summary>
+        /// The platform's rate-the-game dialog.
+        /// </summary>
         public IReviewService Review { get; private set; }
+
+        /// <summary>
+        /// Sharing through the platform.
+        /// </summary>
         public IShareService Share { get; private set; }
+
+        /// <summary>
+        /// In-app purchases.
+        /// </summary>
         public IPurchaseService Purchases { get; private set; }
+
+        /// <summary>
+        /// The platform's privacy (ad consent) options.
+        /// </summary>
         public IPrivacyService Privacy { get; private set; }
         
         /// <summary>
@@ -251,6 +315,10 @@ namespace _Core.Platform.Core
                 Capabilities.SupportsPrivacyOptions = false;
         }
         
+        /// <summary>
+        /// Completes once <see cref="InitializeAsync"/> is no longer running, whether it succeeded or failed; at once
+        /// when it has not started.
+        /// </summary>
         public async Task WaitUntilReadyAsync()
         {
             while (State == PlatformState.Initializing)
@@ -259,6 +327,9 @@ namespace _Core.Platform.Core
             }
         }
         
+        /// <summary>
+        /// True when <paramref name="platform"/> is <see cref="CurrentPlatform"/>, whether or not it initialized.
+        /// </summary>
         public bool IsPlatform(PlatformType platform)
         {
             return CurrentPlatform == platform;

@@ -7,6 +7,10 @@ namespace _Core.Platform.Services.Analytics
     /// </summary>
     public interface IAnalyticsService
     {
+        /// <summary>
+        /// Sends <paramref name="eventName"/> and its optional <paramref name="parameters"/> to the platform's
+        /// analytics.
+        /// </summary>
         void LogEvent(
             string eventName,
             Dictionary<string, object> parameters = null);

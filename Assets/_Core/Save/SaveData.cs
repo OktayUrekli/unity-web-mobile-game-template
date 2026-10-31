@@ -25,9 +25,9 @@ namespace _Core.Save
         /// <summary>
         /// Upgrades data loaded from an older version: <paramref name="fromVersion"/> is lower than
         /// <see cref="CurrentVersion"/> (0 for data saved before versioning). Fields missing from the old
-        /// JSON keep their defaults; keep a renamed field's old name declared until every player has
-        /// migrated, and copy it here. Called by <see cref="SaveManager.Load{T}"/>; the next save writes
-        /// <see cref="CurrentVersion"/>.
+        /// JSON keep their defaults. Copy a renamed field's old value into the new field here, and keep the old
+        /// field declared for good: old saves can come back at any time. Called by
+        /// <see cref="SaveManager.Load{T}"/>; the next save writes <see cref="CurrentVersion"/>.
         /// </summary>
         public virtual void Migrate(int fromVersion)
         {

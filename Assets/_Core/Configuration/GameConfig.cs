@@ -27,7 +27,7 @@ namespace _Core.Configuration
         [SerializeField] private PlatformConfig platformConfig;
 
         /// <summary>
-        /// Scenes the framework loads by name (first scene after boot, menu).
+        /// The scene loaded after boot and the look of the scene transition.
         /// </summary>
         public SceneConfig SceneConfig => sceneConfig;
 

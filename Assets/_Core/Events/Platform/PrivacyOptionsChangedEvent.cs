@@ -6,6 +6,9 @@ namespace _Core.Events.Platform
     /// </summary>
     public readonly struct PrivacyOptionsChangedEvent : IGameEvent
     {
+        /// <summary>
+        /// The new value of <c>IPrivacyService.IsPrivacyOptionsRequired</c>.
+        /// </summary>
         public bool IsRequired { get; }
 
         public PrivacyOptionsChangedEvent(bool isRequired)

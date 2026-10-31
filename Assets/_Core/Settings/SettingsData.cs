@@ -15,7 +15,7 @@ namespace _Core.Settings
 
         public bool vibrationEnabled = true;
 
-        // Language code ("en", "tr", "es"...). Empty follows the device/browser language.
+        // Language code ("en", "tr", "es"...). Empty follows the platform language, else the device/browser language.
         public string language = "";
 
         // Replaces the old "ısFirstLaunch" key. That field was never written,

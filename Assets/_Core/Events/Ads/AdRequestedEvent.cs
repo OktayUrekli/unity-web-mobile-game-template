@@ -8,6 +8,9 @@ namespace _Core.Events.Ads
     /// </summary>
     public readonly struct AdRequestedEvent : IGameEvent
     {
+        /// <summary>
+        /// Format of the requested ad.
+        /// </summary>
         public AdType AdType { get; }
 
         public AdRequestedEvent(AdType adType)

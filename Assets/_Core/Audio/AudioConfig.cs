@@ -7,7 +7,7 @@ namespace _Core.Audio
     /// The audio mixer and its groups, and the sounds the framework itself plays.
     /// The mixer must expose <c>MusicVolume</c> and <c>SFXVolume</c>.
     /// </summary>
-    [CreateAssetMenu(fileName = "AudioConfig", menuName = "Audio/AudioConfig")]
+    [CreateAssetMenu(fileName = "AudioConfig", menuName = "Configuration/Audio Config")]
     public class AudioConfig : ScriptableObject
     {
         [SerializeField] private AudioMixer audioMixer;

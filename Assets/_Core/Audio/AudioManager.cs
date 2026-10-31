@@ -20,7 +20,8 @@ namespace _Core.Audio
         private const string SfxVolumeParameter = "SFXVolume";
         private const float SilentDecibels = -80f;
 
-        // A few sources so a sound with its own pitch never re-pitches one-shots still playing.
+        // A few sources so a sound with its own pitch rarely re-pitches one-shots still playing: that happens only
+        // when every source is busy at another pitch.
         private const int SfxSourceCount = 4;
 
         private AudioConfig _audioConfig;

@@ -132,7 +132,8 @@ namespace _Core.Settings
             else
             {
                 // Defaults stay in memory and nothing is written until a setting changes. After a failed read
-                // SaveManager reads the key again before writing it and keeps stored settings it finds then.
+                // SaveManager reads the key again before writing it and keeps stored settings it finds then, but
+                // this manager still holds the defaults, so its next change writes them over those settings.
                 _settingsData = new SettingsData();
             }
         }

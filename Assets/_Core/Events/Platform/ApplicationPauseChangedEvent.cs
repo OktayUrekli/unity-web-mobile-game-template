@@ -7,6 +7,9 @@ namespace _Core.Events.Platform
     /// </summary>
     public readonly struct ApplicationPauseChangedEvent : IGameEvent
     {
+        /// <summary>
+        /// The new value of <c>AppLifecycleManager.IsApplicationPaused</c>.
+        /// </summary>
         public bool IsPaused { get; }
 
         public ApplicationPauseChangedEvent(bool isPaused)

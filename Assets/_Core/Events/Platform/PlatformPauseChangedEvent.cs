@@ -8,6 +8,9 @@ namespace _Core.Events.Platform
     /// </summary>
     public readonly struct PlatformPauseChangedEvent : IGameEvent
     {
+        /// <summary>
+        /// The new value of <c>IGameService.IsPausedByPlatform</c>.
+        /// </summary>
         public bool IsPaused { get; }
 
         public PlatformPauseChangedEvent(bool isPaused)

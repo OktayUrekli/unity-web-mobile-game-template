@@ -1,5 +1,8 @@
 namespace _Core.Platform.Services.Share.Null
 {
+    /// <summary>
+    /// Provides a safe fallback when sharing is not supported.
+    /// </summary>
     public class NullShareService : IShareService
     {
         public void ShareText(string text)

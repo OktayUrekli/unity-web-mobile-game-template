@@ -9,7 +9,14 @@ namespace _Core.UI
         [SerializeField] private Transform screensRoot;
         [SerializeField] private Transform popupsRoot;
 
+        /// <summary>
+        /// Parent that <see cref="UIManager"/> instantiates screens under.
+        /// </summary>
         public Transform ScreensRoot => screensRoot;
+
+        /// <summary>
+        /// Parent that <see cref="UIManager"/> instantiates popups under.
+        /// </summary>
         public Transform PopupsRoot => popupsRoot;
     }
 }

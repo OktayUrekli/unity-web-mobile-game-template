@@ -5,7 +5,14 @@ namespace _Core.Gameplay
     /// </summary>
     public interface IPausable
     {
+        /// <summary>
+        /// Stops the system's gameplay logic until <see cref="Resume"/>.
+        /// </summary>
         void Pause();
+
+        /// <summary>
+        /// Continues the gameplay logic stopped by <see cref="Pause"/>.
+        /// </summary>
         void Resume();
     }
 }

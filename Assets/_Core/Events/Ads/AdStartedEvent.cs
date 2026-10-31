@@ -1,5 +1,3 @@
-using _Core.Events;
-
 namespace _Core.Events.Ads
 {
     /// <summary>

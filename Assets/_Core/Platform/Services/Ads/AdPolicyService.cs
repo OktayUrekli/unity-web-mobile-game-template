@@ -29,8 +29,10 @@ namespace _Core.Platform.Services.Ads
         /// </summary>
         public IAdsService Inner => _inner;
 
-        // Every request goes through this wrapper, so its own flag is the source of truth. The inner flag
-        // is ignored on purpose: after a timeout it may stay set until the SDK answers (or forever).
+        /// <summary>
+        /// Every request goes through this wrapper, so its own flag is the source of truth. The inner flag
+        /// is ignored on purpose: after a timeout it may stay set until the SDK answers (or forever).
+        /// </summary>
         public bool IsAdShowing => _isRequestInProgress;
 
         /// <summary>
