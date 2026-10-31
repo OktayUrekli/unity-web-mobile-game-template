@@ -20,10 +20,14 @@ namespace _Core.Pooling
         private readonly List<GameObject> _releaseBuffer = new();
         private readonly Transform _parent;
 
+        // Every released object gets this local scale back.
+        private readonly Vector3 _prefabScale;
+
         public ObjectPool(GameObject prefab, int initialSize, Transform parent)
         {
             _prefab = prefab;
             _parent = parent;
+            _prefabScale = prefab != null ? prefab.transform.localScale : Vector3.one;
 
             for (int i = 0; i < initialSize; i++)
             {
@@ -44,7 +48,8 @@ namespace _Core.Pooling
 
         /// <summary>
         /// Returns an object from the pool, activated, then calls <see cref="IPoolable.OnSpawn"/>.
-        /// It stays under the pool's parent with the local position, rotation and scale it had when it was released.
+        /// It stays under the pool's parent, at the prefab's scale, with the local position and rotation it had when it
+        /// was released.
         /// </summary>
         public GameObject Get()
         {
@@ -72,9 +77,10 @@ namespace _Core.Pooling
         }
 
         /// <summary>
-        /// Returns an object back to the pool. It moves under the pool's parent with its local position, rotation and
-        /// scale kept, so a later <see cref="Get(Vector3, Quaternion, Transform)"/> under a scaled parent (a UI canvas,
-        /// a board scaled to fit the screen) gives it the prefab's size again.
+        /// Returns an object back to the pool. It moves under the pool's parent with its local position and rotation
+        /// kept and the prefab's local scale restored, so it comes back at the prefab's size whatever parent it had
+        /// meanwhile (a UI canvas, a board scaled to fit the screen). Only the root's scale is reset, and a tween still
+        /// running changes it again: reset child scales and kill tweens in <see cref="IPoolable.OnDespawn"/>.
         /// </summary>
         public void Release(GameObject obj)
         {
@@ -96,9 +102,12 @@ namespace _Core.Pooling
 
             obj.SetActive(false);
 
-            // worldPositionStays = false: keeping the world pose would bake the old parent's scale into the local
-            // scale, so the object would shrink or grow on every reuse under a scaled parent.
-            obj.transform.SetParent(_parent, false);
+            // A scale picked up meanwhile would otherwise come back with the object and add up on every reuse: a
+            // SetParent that keeps the world scale under a scaled parent, or a scale animation. worldPositionStays =
+            // false keeps the local position and rotation, as Get() documents.
+            Transform objTransform = obj.transform;
+            objTransform.SetParent(_parent, false);
+            objTransform.localScale = _prefabScale;
 
             _pool.Enqueue(obj);
             _inPool.Add(obj);
