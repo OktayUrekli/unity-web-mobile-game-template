@@ -24,6 +24,10 @@ namespace _Platforms.YandexGames.Core
         // A request the SDK has not answered by then fails, so a lost promise cannot block a save forever.
         private const float RequestTimeoutSeconds = 30f;
 
+        // Share of the init timeout the player data may use. Slower data leaves only the cloud saves out (local saves
+        // instead); the SDK itself (ads, pause events, language) still counts as initialized.
+        private const float PlayerDataShareOfInitTimeout = 0.7f;
+
         private enum InitState
         {
             NotStarted,
@@ -146,8 +150,9 @@ namespace _Platforms.YandexGames.Core
 
         /// <summary>
         /// Calls <c>YaGames.init()</c>, loads the player and its cloud data, and waits at most
-        /// <paramref name="timeoutSeconds"/> real seconds. Polls once per frame instead of <c>Task.Delay</c>,
-        /// which relies on threads unavailable on WebGL.
+        /// <paramref name="timeoutSeconds"/> real seconds. The player data gets part of that time; when it is slower,
+        /// the SDK still initializes with <see cref="HasPlayerData"/> false. Polls once per frame instead of
+        /// <c>Task.Delay</c>, which relies on threads unavailable on WebGL.
         /// </summary>
         /// <returns>True when the SDK initialized before the timeout.</returns>
         public static async Task<bool> InitializeAsync(float timeoutSeconds)
@@ -162,7 +167,7 @@ namespace _Platforms.YandexGames.Core
             {
                 EnsureReceiver();
                 _initState = InitState.Running;
-                CallInit(ReceiverName);
+                CallInit(ReceiverName, Mathf.RoundToInt(Mathf.Max(0f, timeoutSeconds) * PlayerDataShareOfInitTimeout * 1000f));
             }
 
             float deadline = Time.realtimeSinceStartup + timeoutSeconds;
@@ -502,7 +507,7 @@ namespace _Platforms.YandexGames.Core
 
 #if UNITY_WEBGL && !UNITY_EDITOR
         [DllImport("__Internal")] private static extern int YandexGames_IsSdkLoaded();
-        [DllImport("__Internal")] private static extern void YandexGames_Init(string receiverName);
+        [DllImport("__Internal")] private static extern void YandexGames_Init(string receiverName, int dataTimeoutMs);
         [DllImport("__Internal")] private static extern void YandexGames_GameReady();
         [DllImport("__Internal")] private static extern void YandexGames_GameplayStart();
         [DllImport("__Internal")] private static extern void YandexGames_GameplayStop();
@@ -515,7 +520,7 @@ namespace _Platforms.YandexGames.Core
         [DllImport("__Internal")] private static extern void YandexGames_SetLeaderboardScore(int id, string name, double score);
         [DllImport("__Internal")] private static extern void YandexGames_RequestReview(int id);
 
-        private static void CallInit(string receiverName) => YandexGames_Init(receiverName);
+        private static void CallInit(string receiverName, int dataTimeoutMs) => YandexGames_Init(receiverName, dataTimeoutMs);
         private static void CallGameReady() => YandexGames_GameReady();
         private static void CallGameplayStart() => YandexGames_GameplayStart();
         private static void CallGameplayStop() => YandexGames_GameplayStop();
@@ -528,7 +533,7 @@ namespace _Platforms.YandexGames.Core
         private static void CallRequestReview(int id) => YandexGames_RequestReview(id);
 #else
         // Outside a WebGL player IsAvailable is false, so initialization never succeeds and nothing below runs.
-        private static void CallInit(string receiverName) { }
+        private static void CallInit(string receiverName, int dataTimeoutMs) { }
         private static void CallGameReady() { }
         private static void CallGameplayStart() { }
         private static void CallGameplayStop() { }

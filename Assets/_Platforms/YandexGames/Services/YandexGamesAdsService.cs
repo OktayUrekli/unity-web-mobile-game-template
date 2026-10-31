@@ -83,10 +83,21 @@ namespace _Platforms.YandexGames.Services
             _rewarded = false;
             EventBus.Subscribe<AdRequestCompletedEvent>(OnAdRequestCompleted);
 
-            if (adType == AdType.Rewarded)
-                YandexGamesSdk.ShowRewardedAd(OnAdEvent);
-            else
-                YandexGamesSdk.ShowFullscreenAd(OnAdEvent);
+            try
+            {
+                if (adType == AdType.Rewarded)
+                    YandexGamesSdk.ShowRewardedAd(OnAdEvent);
+                else
+                    YandexGamesSdk.ShowFullscreenAd(OnAdEvent);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+
+                // The SDK may already have answered (an error event) before throwing.
+                if (_isAdShowing)
+                    Complete(AdResult.Failed);
+            }
         }
 
         private void OnAdEvent(string type, string value)
@@ -144,10 +155,16 @@ namespace _Platforms.YandexGames.Services
             if (gameEvent.Result != AdResult.TimedOut || !_isAdShowing)
                 return;
 
+            bool adOpened = _finishOwed;
             _isTimedOut = true;
             _finishOwed = false;
 
-            // _isAdShowing stays set until the SDK answers, so new requests get InProgress until then.
+            // An ad on screen keeps the request open until Yandex closes it, so new requests get InProgress until
+            // then. One that never opened is released now: Yandex may never answer it, and every later request would
+            // get InProgress for the rest of the session. A late answer for it is ignored: OnAdEvent drops events while
+            // no request is open, and YandexGamesSdk drops the events of an older ad once a newer one starts.
+            if (!adOpened)
+                Release();
         }
 
         /// <summary>
@@ -156,11 +173,8 @@ namespace _Platforms.YandexGames.Services
         /// </summary>
         private void Complete(AdResult result)
         {
-            _isAdShowing = false;
-            EventBus.Unsubscribe<AdRequestCompletedEvent>(OnAdRequestCompleted);
-
             Action<AdResult> callback = _callback;
-            _callback = null;
+            Release();
 
             // EventBus isolates handler exceptions, so the callback below always runs.
             if (_finishOwed)
@@ -170,6 +184,14 @@ namespace _Platforms.YandexGames.Services
             }
 
             callback?.Invoke(result);
+        }
+
+        // Ends the request without answering it (AdPolicyService has already answered the caller after a timeout).
+        private void Release()
+        {
+            _isAdShowing = false;
+            _callback = null;
+            EventBus.Unsubscribe<AdRequestCompletedEvent>(OnAdRequestCompleted);
         }
     }
 }

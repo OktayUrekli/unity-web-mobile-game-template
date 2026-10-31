@@ -11,7 +11,7 @@ var YandexGamesBridge = {
     // Last gameplay state the game reported through GameplayAPI.
     gameplayRunning: false,
 
-    // setData calls made in the same frame are sent as one (SaveManager flushes several keys at once).
+    // setData calls made in the same C# call are sent as one (SaveManager flushes several keys at once).
     pendingSaveIds: [],
     saveScheduled: false,
 
@@ -84,9 +84,12 @@ var YandexGamesBridge = {
       }
 
       // The whole object is sent every time: it holds every key, so the result is the same whether setData
-      // replaces or merges. flush false lets the SDK queue the request (setData allows 100 calls per 5 minutes).
+      // replaces or merges. flush false lets the SDK queue the request (setData allows 100 calls per 5 minutes);
+      // a write made while the page is hidden (SaveManager flushes on pagehide/visibilitychange) is sent at once,
+      // because the page may be closed or frozen before a queued request goes out.
       var player = YandexGames.player;
-      YandexGames.promise(function () { return player.setData(YandexGames.data, false); }).then(function () {
+      var sendNow = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+      YandexGames.promise(function () { return player.setData(YandexGames.data, sendNow); }).then(function () {
         ids.forEach(function (id) { YandexGames.reply(id, true); });
       }, function (error) {
         var text = YandexGames.errorText(error);
@@ -99,8 +102,11 @@ var YandexGamesBridge = {
     return typeof YaGames !== 'undefined' && YaGames && typeof YaGames.init === 'function' ? 1 : 0;
   },
 
-  YandexGames_Init: function (receiverPtr) {
+  // dataTimeoutMs: how long (from now) the player data may take. When it is slower, the SDK still counts as
+  // initialized and only the cloud saves fall back to local ones, instead of C# timing out the whole platform.
+  YandexGames_Init: function (receiverPtr, dataTimeoutMs) {
     YandexGames.receiver = UTF8ToString(receiverPtr);
+    var dataDeadline = Date.now() + dataTimeoutMs;
 
     YandexGames.promise(function () { return YaGames.init(); }).then(function (sdk) {
       YandexGames.sdk = sdk;
@@ -127,12 +133,21 @@ var YandexGamesBridge = {
         console.warn('Yandex: pause events unavailable: ' + YandexGames.errorText(e));
       }
 
-      // Cloud saves need the player object; without it the game saves locally.
-      return YandexGames.promise(function () { return sdk.getPlayer(); }).then(function (player) {
-        YandexGames.player = player;
-        return YandexGames.promise(function () { return player.getData(); });
-      }).then(function (data) {
-        YandexGames.data = data || {};
+      // Cloud saves need the player object; without it the game saves locally. scopes false: the bridge uses no
+      // personal data (name, avatar), so no permission is asked for.
+      var load = YandexGames.promise(function () { return sdk.getPlayer({ scopes: false }); }).then(function (player) {
+        return YandexGames.promise(function () { return player.getData(); }).then(function (data) {
+          return { player: player, data: data };
+        });
+      });
+      var timeout = new Promise(function (resolve, reject) {
+        setTimeout(function () { reject(new Error('timed out')); }, Math.max(0, dataDeadline - Date.now()));
+      });
+
+      // A load that finishes after the deadline is ignored: the game already runs on local saves.
+      return Promise.race([load, timeout]).then(function (result) {
+        YandexGames.player = result.player;
+        YandexGames.data = result.data || {};
         return true;
       }, function (error) {
         console.warn('Yandex: player data unavailable: ' + YandexGames.errorText(error));
@@ -247,10 +262,12 @@ var YandexGamesBridge = {
       delete YandexGames.data[key];
     }
 
+    // Batched in a microtask, not a timer: it still runs after every SetData of the current C# call (one
+    // SaveManager flush), but before a page-hide handler returns, while a timer may never run on a closing page.
     YandexGames.pendingSaveIds.push(id);
     if (!YandexGames.saveScheduled) {
       YandexGames.saveScheduled = true;
-      setTimeout(YandexGames.flushData, 0);
+      Promise.resolve().then(YandexGames.flushData);
     }
   },
 

@@ -6,10 +6,10 @@ How the project maps onto the Yandex Games JS SDK v2, from the official docs (ya
 
 | Project class | Interface | SDK calls | Notes |
 |---|---|---|---|
-| `YandexGamesPlatform` | `IPlatform` | `YaGames.init()`, `getPlayer()`, `player.getData()` | Init loads the player and all its data within `SdkInitTimeoutSeconds`; real services only after a successful init. |
+| `YandexGamesPlatform` | `IPlatform` | `YaGames.init()`, `getPlayer({ scopes: false })`, `player.getData()` | Init must finish within `SdkInitTimeoutSeconds`; real services only after a successful init. The player data gets 70% of that time: when it is slower, init still succeeds and only saves fall back to PlayerPrefs. |
 | `YandexGamesGameService` | `IGameService` | `features.LoadingAPI.ready`, `features.GameplayAPI.start/stop`, `environment.i18n.lang`, `on('game_api_pause' / 'game_api_resume')` | Pause requests become `IsPausedByPlatform` + `PlatformPauseChangedEvent`, except a pause during the game's own ad request. |
 | `YandexGamesAdsService` | `IAdsService` | `adv.showFullscreenAdv`, `adv.showRewardedVideo`, `adv.showBannerAdv/hideBannerAdv` | Fullscreen: `onClose(wasShown)` false = `Failed`. Rewarded: `Completed` only after `onRewarded`. No prefetch, no adblock detection. |
-| `YandexGamesDataStorage` | `ISaveStorage` + `IAsyncSaveStorage` | `player.setData(wholeObject, false)` | Reads from the data loaded at init; writes of one frame go out as one `setData`. PlayerPrefs when the player didn't load. |
+| `YandexGamesDataStorage` | `ISaveStorage` + `IAsyncSaveStorage` | `player.setData(wholeObject, flush)` | Reads from the data loaded at init; the writes of one `SaveManager` flush go out as one `setData`, with `flush` true only while the page is hidden (closing tab). PlayerPrefs when the player didn't load. |
 | `YandexGamesLeaderboardService` | `ILeaderboardService` | `isAvailableMethod('leaderboards.setScore')`, `leaderboards.setScore` | Null ID uses `PlatformConfig.DefaultLeaderboardId` (technical name). `ShowLeaderboard` is a no-op. |
 | `YandexGamesReviewService` | `IReviewService` | `feedback.canReview`, `feedback.requestReview` | |
 
@@ -24,7 +24,7 @@ The YandexGames WebGL template loads `/sdk.js` (a relative path, required for up
 - `game_api_pause`/`game_api_resume` fire around Yandex's ads (including the automatic start-up ad), purchase windows, hidden tabs and minimized windows. The SDK itself calls `GameplayAPI.stop()` on pause and `start()` on resume; the jslib calls `stop()` again after a resume when the game had reported gameplay as stopped meanwhile (pause menu).
 - `LoadingAPI.ready()` is a moderation requirement; `Bootstrapper` sends it through `GameReady()` once the first scene is shown.
 - The game must start in `i18n.lang` (requirement 2.14, checked per language on the debug panel). `LocalizationManager` does, unless the player picked a language.
-- `setData`: 200 KB per player, 100 calls per 5 minutes; `flush` false queues the write. Replace versus merge is undocumented, so the bridge always sends every key.
+- `setData`: 200 KB per player, 100 calls per 5 minutes; `flush` false queues the write. Replace versus merge is undocumented, so the bridge always sends every key. `SaveConfig`'s size warning defaults to CrazyGames' 1 MB: lower its storage limit for a Yandex game.
 - Leaderboards and reviews work only for signed-in players; `setScore` at most once per second, never negative.
 - Yandex decides how often fullscreen ads show; a call too soon closes with `wasShown` false. Rewarded ads have no frequency limit. `PlatformConfig.InterstitialCooldownSeconds` still applies on top.
 
