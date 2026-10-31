@@ -209,8 +209,9 @@ namespace _Project.Systems
             if (IsNewBest)
                 PlatformManager.Instance.Game.HappyTime();
 
-            // Ignored by platforms without a leaderboard (Null service).
-            PlatformManager.Instance.Leaderboard.SubmitScore(null, Score);
+            // null: the default leaderboard (PlatformConfig.DefaultLeaderboardId on Yandex; CrazyGames has one per game).
+            if (PlatformManager.Instance.Capabilities.SupportsLeaderboard)
+                PlatformManager.Instance.Leaderboard.SubmitScore(null, Score);
 
             UIManager.Instance.ShowPopup<GameOverPopup>();
         }
