@@ -32,7 +32,10 @@ namespace _Core.Gameplay
 
         private void OnPauseStateChanged(PauseStateChangedEvent gameEvent)
         {
-            Apply(gameEvent.IsPaused);
+            // Read the live state: a handler that pauses or resumes during this publish makes the event's value stale
+            // for the handlers after it.
+            PauseManager pauseManager = PauseManager.Instance;
+            Apply(pauseManager != null ? pauseManager.IsPaused : gameEvent.IsPaused);
         }
 
         private void Apply(bool paused)

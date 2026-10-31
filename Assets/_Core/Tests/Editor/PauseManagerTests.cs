@@ -6,6 +6,7 @@ using _Core.Events.Platform;
 using _Core.Gameplay;
 using _Core.Platform.Core;
 using _Core.Platform.Services.Ads;
+using _Core.Tests.Fakes;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -18,6 +19,8 @@ namespace _Core.Tests
     /// </summary>
     public class PauseManagerTests
     {
+        private static readonly PauseSource TutorialSource = new("Tutorial");
+
         private readonly List<bool> _pauseEvents = new();
         private readonly List<bool> _gameplayEvents = new();
         private GameObject _gameObject;
@@ -196,6 +199,42 @@ namespace _Core.Tests
 
             _pauseManager.Resume(PauseSource.Menu);
             CollectionAssert.AreEqual(new[] { true }, _gameplayEvents);
+        }
+
+        [Test]
+        public void PauseHandler_FollowsTheLiveState_WhenAnEarlierHandlerPausesAgainDuringThePublish()
+        {
+            _pauseManager.Pause(PauseSource.Menu);
+
+            // Subscribed before the handler: pauses again as soon as the menu releases, inside the same publish, so
+            // the handler then receives the nested 'true' before the outer, stale 'false'.
+            EventBus.Subscribe<PauseStateChangedEvent>(PauseAgainOnResume);
+
+            var handlerObject = new GameObject(nameof(FakePauseHandler)) { hideFlags = HideFlags.HideAndDontSave };
+            FakePauseHandler handler = handlerObject.AddComponent<FakePauseHandler>();
+
+            try
+            {
+                handler.Enable();
+                Assert.AreEqual(1, handler.PauseCount, "A handler enabled during a pause is paused at once.");
+
+                _pauseManager.Resume(PauseSource.Menu);
+
+                Assert.IsTrue(_pauseManager.IsPaused, "The tutorial source still holds a pause.");
+                Assert.IsTrue(handler.HandlerIsPaused, "The handler must follow the live pause state, not the stale event value.");
+                Assert.AreEqual(0, handler.ResumeCount);
+            }
+            finally
+            {
+                handler.Disable();
+                Object.DestroyImmediate(handlerObject);
+            }
+        }
+
+        private void PauseAgainOnResume(PauseStateChangedEvent gameEvent)
+        {
+            if (!gameEvent.IsPaused)
+                _pauseManager.Pause(TutorialSource);
         }
 
         private void OnPauseStateChanged(PauseStateChangedEvent gameEvent)
