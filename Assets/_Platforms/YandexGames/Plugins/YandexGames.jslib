@@ -15,6 +15,14 @@ var YandexGamesBridge = {
     pendingSaveIds: [],
     saveScheduled: false,
 
+    // True from pagehide (tab closed or reloaded, page left) until the page is shown again.
+    unloading: false,
+
+    // True while the newest data went to the SDK only with flush false (it may still wait in the SDK's queue), or
+    // while its resend failed.
+    queuedWrite: false,
+    listensForHide: false,
+
     send: function (method, payload) {
       if (!YandexGames.receiver) {
         return;
@@ -85,15 +93,34 @@ var YandexGamesBridge = {
 
       // The whole object is sent every time: it holds every key, so the result is the same whether setData
       // replaces or merges. flush false lets the SDK queue the request (setData allows 100 calls per 5 minutes);
-      // a write made while the page is hidden (SaveManager flushes on pagehide/visibilitychange) is sent at once,
-      // because the page may be closed or frozen before a queued request goes out.
+      // a write made while the page is hidden or closing (SaveManager flushes on pagehide/visibilitychange) is sent
+      // at once, because the page may be closed or frozen before a queued request goes out. A closing tab fires
+      // pagehide while the page still counts as visible, hence the unloading flag. When that event's own save sends
+      // nothing, sendQueuedWrite sends the data again with flush true.
       var player = YandexGames.player;
-      var sendNow = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+      var sendNow = YandexGames.unloading ||
+        (typeof document !== 'undefined' && document.visibilityState === 'hidden');
+      YandexGames.queuedWrite = !sendNow;
       YandexGames.promise(function () { return player.setData(YandexGames.data, sendNow); }).then(function () {
         ids.forEach(function (id) { YandexGames.reply(id, true); });
       }, function (error) {
         var text = YandexGames.errorText(error);
         ids.forEach(function (id) { YandexGames.reply(id, false, text); });
+      });
+    },
+
+    // Runs when the page is hidden or closed, after the SaveManager's own save for that event: when nothing went out
+    // at once since a write was queued (flush false), the data is sent again with flush true.
+    sendQueuedWrite: function () {
+      if (!YandexGames.queuedWrite || !YandexGames.player) {
+        return;
+      }
+
+      YandexGames.queuedWrite = false;
+      var player = YandexGames.player;
+      YandexGames.promise(function () { return player.setData(YandexGames.data, true); }).catch(function (error) {
+        YandexGames.queuedWrite = true;
+        console.warn('Yandex: sending the queued save failed: ' + YandexGames.errorText(error));
       });
     }
   },
@@ -107,6 +134,11 @@ var YandexGamesBridge = {
   YandexGames_Init: function (receiverPtr, dataTimeoutMs) {
     YandexGames.receiver = UTF8ToString(receiverPtr);
     var dataDeadline = Date.now() + dataTimeoutMs;
+
+    // Registered before SaveManager.jslib's pagehide listener (the save manager starts after the platform) and in
+    // the capture phase, so the flag is already set when that listener's save reaches flushData.
+    window.addEventListener('pagehide', function () { YandexGames.unloading = true; }, true);
+    window.addEventListener('pageshow', function () { YandexGames.unloading = false; }, true);
 
     YandexGames.promise(function () { return YaGames.init(); }).then(function (sdk) {
       YandexGames.sdk = sdk;
@@ -262,8 +294,21 @@ var YandexGamesBridge = {
       delete YandexGames.data[key];
     }
 
-    // Batched in a microtask, not a timer: it still runs after every SetData of the current C# call (one
-    // SaveManager flush), but before a page-hide handler returns, while a timer may never run on a closing page.
+    // Registered at the first save, so after SaveManager.jslib's own listeners (that manager starts before any save):
+    // they run once that manager's save for the same event has gone out.
+    if (!YandexGames.listensForHide) {
+      YandexGames.listensForHide = true;
+      window.addEventListener('pagehide', YandexGames.sendQueuedWrite);
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') {
+          YandexGames.sendQueuedWrite();
+        }
+      });
+    }
+
+    // Batched in a microtask, not a timer: it runs once the current C# call (one SaveManager flush) has made all
+    // its SetData calls, still inside the page-hide event that caused it, while a timer may never run on a closing
+    // page.
     YandexGames.pendingSaveIds.push(id);
     if (!YandexGames.saveScheduled) {
       YandexGames.saveScheduled = true;
