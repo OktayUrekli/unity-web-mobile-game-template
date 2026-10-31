@@ -28,7 +28,8 @@ namespace _Core.Save
         private ISaveStorage _storage;
         private SaveCache _cache;
 
-        // Back-off for retrying writes that failed (storage or SDK error), reset once a flush leaves nothing pending.
+        // Back-off for retrying writes that failed (storage or SDK error), reset once a flush leaves nothing pending
+        // and no asynchronous write running.
         private const float MinRetryDelaySeconds = 2f;
         private const float MaxRetryDelaySeconds = 60f;
 
@@ -204,8 +205,9 @@ namespace _Core.Save
             if (_cache.HasPendingChanges && _cache.HasWritesInFlight)
                 ScheduleFlushAt(Time.unscaledTime + Mathf.Max(_saveConfig.FlushDelaySeconds, 0.1f));
 
-            // Everything reached storage (or is being written): the storage works again.
-            if (!_retryScheduled && !_cache.HasPendingChanges)
+            // Everything reached storage: the storage works again. A running async write (Yandex) may still fail and
+            // must not reset the back-off, or a failing storage would be retried every ~2 s for ever.
+            if (!_retryScheduled && !_cache.HasPendingChanges && !_cache.HasWritesInFlight)
                 _retryDelay = MinRetryDelaySeconds;
         }
 
