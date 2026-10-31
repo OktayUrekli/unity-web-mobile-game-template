@@ -9,12 +9,19 @@ using UnityEngine;
 namespace _Platforms.CrazyGames.Services
 {
     /// <summary>
-    /// Handles user operations through the CrazyGames SDK.
+    /// Handles user operations through the CrazyGames SDK. Every callback is answered exactly once: CrazySDK keeps one
+    /// slot per prompt (a second call overwrites the first caller's) and calls game callbacks inside its own loops,
+    /// so this service answers overlapping prompt calls itself and never lets a game callback throw into the SDK.
     /// </summary>
     public class CrazyGamesUserService : IUserService
     {
+        // CrazySDK's error code when the auth prompt is opened for a player who is already signed in.
+        private const string UserAlreadySignedInError = "userAlreadySignedIn";
+
         private Action<PlatformUser> _userChanged;
         private bool _authListenerRegistered;
+        private bool _isLoginPromptOpen;
+        private bool _isLinkPromptOpen;
 
         public bool IsAvailable
         {
@@ -63,7 +70,7 @@ namespace _Platforms.CrazyGames.Services
             CrazySDK.User.GetUser(user =>
             {
                 SetCurrentUser(ToPlatformUser(user));
-                callback?.Invoke(CurrentUser);
+                SafeInvoke(callback, CurrentUser);
             });
         }
 
@@ -75,17 +82,36 @@ namespace _Platforms.CrazyGames.Services
                 return;
             }
 
+            // CrazySDK keeps one auth prompt callback: a second call would take the first caller's answer.
+            if (_isLoginPromptOpen)
+            {
+                Debug.LogWarning("CrazyGames: Login prompt is already open; ignoring the second request.");
+                callback?.Invoke(null);
+                return;
+            }
+
+            _isLoginPromptOpen = true;
             CrazySDK.User.ShowAuthPrompt((error, user) =>
             {
+                _isLoginPromptOpen = false;
+
                 if (error != null)
                 {
+                    // Signed in on the portal without this service hearing about it (the auth listener is
+                    // registered only when the game subscribes to UserChanged): answer with that user.
+                    if (error.code == UserAlreadySignedInError)
+                    {
+                        GetCurrentUser(callback);
+                        return;
+                    }
+
                     Debug.LogWarning($"CrazyGames: Login failed: {error}");
-                    callback?.Invoke(null);
+                    SafeInvoke(callback, null);
                     return;
                 }
 
                 SetCurrentUser(ToPlatformUser(user));
-                callback?.Invoke(CurrentUser);
+                SafeInvoke(callback, CurrentUser);
             });
         }
 
@@ -97,16 +123,27 @@ namespace _Platforms.CrazyGames.Services
                 return;
             }
 
+            // CrazySDK keeps one account link callback: a second call would take the first caller's answer.
+            if (_isLinkPromptOpen)
+            {
+                Debug.LogWarning("CrazyGames: Account link prompt is already open; ignoring the second request.");
+                callback?.Invoke(false);
+                return;
+            }
+
+            _isLinkPromptOpen = true;
             CrazySDK.User.ShowAccountLinkPrompt((error, linked) =>
             {
+                _isLinkPromptOpen = false;
+
                 if (error != null)
                 {
                     Debug.LogWarning($"CrazyGames: Account link prompt failed: {error}");
-                    callback?.Invoke(false);
+                    SafeInvoke(callback, false);
                     return;
                 }
 
-                callback?.Invoke(linked);
+                SafeInvoke(callback, linked);
             });
         }
 
@@ -123,12 +160,26 @@ namespace _Platforms.CrazyGames.Services
                 if (error != null)
                 {
                     Debug.LogWarning($"CrazyGames: User token request failed: {error}");
-                    callback?.Invoke(null);
+                    SafeInvoke(callback, null);
                     return;
                 }
 
-                callback?.Invoke(token);
+                SafeInvoke(callback, token);
             });
+        }
+
+        // Game callbacks run inside CrazySDK's callback code: an exception escaping there skips the SDK's own
+        // cleanup (a prompt slot stays taken) and the callbacks queued after this one.
+        private static void SafeInvoke<T>(Action<T> callback, T value)
+        {
+            try
+            {
+                callback?.Invoke(value);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+            }
         }
 
         private void RegisterAuthListener()

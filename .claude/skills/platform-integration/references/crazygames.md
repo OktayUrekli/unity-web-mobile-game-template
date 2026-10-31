@@ -56,7 +56,7 @@ Game code never calls `GameplayStart/Stop`; `GameplayStateManager` keeps them pa
 - Before a request the SDK stores and zeroes `Time.timeScale` (only with `pauseGameDuringAd`), zeroes `AudioListener.volume` and forces `Application.runInBackground = true`; it restores all three in its own callbacks only. `PauseManager` overrides the time scale either way. On a `TimedOut` request the bridge restores volume and `runInBackground` itself.
 - Unscaled-time code (`unscaledDeltaTime`, `SetUpdate(true)` tweens, UI animations) keeps running during ads unless it is a `GameplayPauseHandler`.
 - `PrefetchAd(type)` preloads; `HasAdblock(cb)` detects adblock. The jslib releases pointer lock when the adblock popup opens.
-- `CrazyBanner` registers itself in `Awake`; `RefreshBanners()` requests ads for every `activeInHierarchy` banner (728x90, 300x250, 320x50, 320x100, 468x60; position from the child `Banner` RectTransform). Activating a banner alone shows nothing.
+- `CrazyBanner` registers itself in `Awake`; `RefreshBanners()` requests ads for every `activeInHierarchy` banner (728x90, 300x250, 320x50, 320x100, 468x60; position from the child `Banner` RectTransform). Activating a banner alone shows nothing, and deactivating or destroying one hides nothing: on WebGL the banner is a page overlay that goes away only on the next `RefreshBanners()` without it, so `HideBanner()` refreshes. The Editor only recolours the Unity object, so check banners in a WebGL build.
 
 ## Audio, user, leaderboard, data
 

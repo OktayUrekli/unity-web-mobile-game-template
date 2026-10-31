@@ -55,8 +55,19 @@ namespace _Platforms.CrazyGames.Services
                 return;
             }
 
-            // Answers immediately once detection has finished, otherwise when it does.
-            CrazySDK.Ad.HasAdblock(callback);
+            // Answers immediately once detection has finished, otherwise when it does. The SDK answers every queued
+            // caller in one loop, so a throwing callback must not reach it and starve the callers after it.
+            CrazySDK.Ad.HasAdblock(hasAdblock =>
+            {
+                try
+                {
+                    callback?.Invoke(hasAdblock);
+                }
+                catch (Exception exception)
+                {
+                    Debug.LogException(exception);
+                }
+            });
         }
 
         public void ShowBanner()
@@ -80,9 +91,16 @@ namespace _Platforms.CrazyGames.Services
 
         public void HideBanner()
         {
+            // Explicit null check: the ?. operator bypasses Unity's fake-null.
             CrazyGamesBannerController controller = CrazyGamesBannerController.Instance;
             if (controller != null)
                 controller.Hide();
+
+            // On WebGL the banner is an overlay on the page: deactivating (or destroying) the banner object only
+            // leaves it out of the next refresh. Refreshing now, with no visible banner, removes the overlay. The
+            // IsShutDown check keeps a call during quit from creating the SDK object again.
+            if (CanShowAds() && !CrazySDK.IsShutDown)
+                CrazySDK.Banner.RefreshBanners();
         }
 
         private void RequestAd(
