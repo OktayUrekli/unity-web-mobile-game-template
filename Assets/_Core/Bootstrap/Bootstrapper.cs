@@ -87,7 +87,9 @@ namespace _Core.Bootstrap
                     LoadFirstSceneFallback();
             }
 
-            if (firstBoot)
+            // Play Mode stopped during the load. ('this' can't tell: on the normal path it is gone too, because the
+            // first scene replaced the bootstrap scene.)
+            if (firstBoot && Application.isPlaying)
             {
                 Debug.Log($"Bootstrap: first scene shown after {Time.realtimeSinceStartup:F1} s.");
                 ReportGameReady();
@@ -155,6 +157,10 @@ namespace _Core.Bootstrap
         {
             if (loadingScreen != null)
                 await loadingScreen.CompleteAsync();
+
+            // Play Mode stopped while the bar filled (see Start).
+            if (this == null)
+                return;
 
             Debug.Log($"Bootstrap: systems ready after {Time.realtimeSinceStartup:F1} s; loading the first scene.");
 
