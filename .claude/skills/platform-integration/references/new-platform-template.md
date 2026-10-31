@@ -33,6 +33,7 @@ SDK plug-ins that stay in a vendor folder go into `PlatformBuildAssets.VendorPlu
 
 ```csharp
 using System.Threading.Tasks;
+using _Core.Configuration;
 using _Core.Platform.Core;
 using _Platforms.MyPortal.Services;
 using _Core.Platform.Services.Achievement.Null;
@@ -56,9 +57,6 @@ namespace _Platforms.MyPortal.Core
     /// </summary>
     public class MyPortalPlatform : IPlatform
     {
-        // Generous: the SDK script is downloaded from the network on first load.
-        private const float InitTimeoutSeconds = 15f;
-
         private bool _isSdkReady;
 
         public void ConfigureCapabilities(PlatformCapabilities capabilities)
@@ -93,7 +91,8 @@ namespace _Platforms.MyPortal.Core
                     () => completion.TrySetResult(true),
                     error => completion.TrySetResult(false));
 
-                bool completed = await WaitWithTimeoutAsync(completion.Task, InitTimeoutSeconds);
+                float timeoutSeconds = ConfigurationManager.GameConfig.PlatformConfig.SdkInitTimeoutSeconds;
+                bool completed = await WaitWithTimeoutAsync(completion.Task, timeoutSeconds);
                 _isSdkReady = completed && completion.Task.Result; // safe: task is completed
 
                 if (!_isSdkReady)
@@ -159,8 +158,7 @@ namespace _Platforms.MyPortal.Core
 Reading `.Result` is fine only after `IsCompleted` is true - it never blocks then. Anywhere else,
 `.Result` / `.Wait()` would freeze a WebGL tab.
 
-If a second platform needs `WaitWithTimeoutAsync`, move it into a shared static helper under
-`_Core/Platform/Core/` instead of copying it.
+Each bridge keeps its own short realtime loop like this one.
 
 ## Ads service (event contract)
 

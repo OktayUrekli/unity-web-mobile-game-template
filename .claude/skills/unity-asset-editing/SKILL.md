@@ -33,7 +33,7 @@ bash .claude/skills/unity-asset-editing/scripts/find-guid.sh --refs <32-hex-guid
 - Never write a `.meta` by hand for anything Unity can import; Unity creates it on the next import.
 - Never change an existing GUID. Move or rename an asset together with its `.meta` (`git mv file file.meta`); a lost meta means a new GUID and "missing script" everywhere.
 - Before deleting a script or asset, run `find-guid.sh --refs` on it and clean those references first.
-- Keep each file's line endings and indentation (this repo mixes LF scene files and CRLF `.meta` files; check with `file <path>`). Don't reformat or reorder documents you aren't changing.
+- Keep each file's line endings and indentation. Don't reformat or reorder documents you aren't changing.
 - Third-party folders are off limits (CLAUDE.md).
 
 ## Leave it to the Editor

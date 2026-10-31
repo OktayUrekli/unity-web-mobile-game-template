@@ -12,12 +12,11 @@ Read the source for signatures and order; this file keeps the design decisions a
 `Bootstrapper` (in `00_Bootstrap`) runs once per app start and creates every manager in code; read it for the order. Each step has its own try/catch, so one failing manager doesn't stop the boot. In the Editor a `BootstrapGuard` returns to the scene it came from. The `LoadingScreen` prefab lives only in `00_Bootstrap`; a game changes its logo and name text.
 
 - Platform services exist only after `PlatformManager.InitializeAsync()`; anything that reads them is created after it.
-- `EventBus.Clear()` wipes earlier subscriptions. Never load `00_Bootstrap` again at runtime.
-- Every directly playable scene needs a `BootstrapGuard`.
+- Never load `00_Bootstrap` again at runtime: the boot runs only while no `PersistentRoot` exists, so it restarts nothing and only opens the first scene.
 
 ## Adding a manager or config
 
-- Derive from `Singleton<T>`. `Awake` only sets identity (`base.Awake(); if (IsDuplicate) return;`). Dependent setup and subscriptions go in a public `Init()` that the Bootstrapper calls, undone in an `internal Shutdown()` that `OnDestroy` calls (EditMode tests call it directly). Add the `Create<Name>()` step after everything its `Init()` touches.
+- Derive from `Singleton<T>`; an `Awake` override starts with `base.Awake(); if (IsDuplicate) return;`. Prefer `Awake` for identity only and a public `Init()`, called by the Bootstrapper, for setup and subscriptions; `OnDestroy` undoes them. A manager whose EditMode tests must undo `Init()` puts the undo in an `internal Shutdown()` that `OnDestroy` and the tests call (`PauseManager`, `GameplayStateManager`). Add the `Create<Name>()` step after everything its `Init()` touches.
 - Managers that would depend on each other "sideways" talk through events (SettingsManager publishes `AudioSettingsChangedEvent`; AudioManager applies it).
 - Config: a `ScriptableObject` class in `_Core` with `[CreateAssetMenu(menuName = "Configuration/...")]`, private serialized fields and read-only properties, a slot on `GameConfig`, the asset in `Assets/_Project/ScriptableObjects/Config`. Assigning it is an Editor step: tell the user if you can't. Log a clear error when the slot is empty. Game tuning doesn't go in `GameConfig`; it lives in `_Project` ScriptableObjects.
 
@@ -46,8 +45,8 @@ Static, one channel per event type, no allocation per publish. Events are `reado
 
 - `SaveManager.Save(key, data)` / `Load(key, out T)` with `T : SaveData` and `JsonUtility` (public fields; no properties, dictionaries or polymorphism). `Load` returns false and a fresh `new T()` when nothing is stored.
 - `Save` writes to an in-memory cache. Storage is written after a debounce, on focus loss, pause or quit, when a WebGL page is hidden or closed, or on `Flush()`: call `Flush()` after key moments. Failed writes retry with back-off. A key whose read failed is never written blindly: it is read again first, and data this session never saw wins.
-- Storage is the platform's `ISaveStorage`, with `PlayerPrefsSaveStorage` as the fallback. Async backends need `SaveManager.PreloadAsync(keys)` before `Load`. Saves are checked against 1 MB (CrazyGames).
-- Evolving save classes: see the `SaveData` rule in CLAUDE.md; keep a renamed field until players have migrated. Key `"settings"` belongs to `SettingsManager`.
+- Storage is the platform's `ISaveStorage`, with `PlayerPrefsSaveStorage` as the fallback. Async backends need `SaveManager.PreloadAsync(keys)` before `Load`. Saves are checked against `SaveConfig`'s storage limit, 1 MB by default (CrazyGames); Yandex allows less, see `platform-integration/references/yandexgames.md`.
+- Evolving save classes: see the `SaveData` rule in CLAUDE.md. When a field is renamed, keep the old field declared for good: old saves can come back at any time. Key `"settings"` belongs to `SettingsManager`.
 - `SettingsManager` setters persist and publish (`AudioSettingsChangedEvent`, `LanguageChangedEvent`); the settings UI calls `Commit()` when it closes. Music and SFX are on/off, not volumes.
 - Language: the saved choice, else the platform's `IGameService.Language`, else the device language ("en-US" picks "en"). Boot waits for Localization at most 10 s. `_Core` strings live in the `Core` table.
 

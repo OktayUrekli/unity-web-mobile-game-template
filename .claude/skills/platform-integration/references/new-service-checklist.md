@@ -12,6 +12,7 @@ Example: a hypothetical `ICloudConfigService` ("remote config"). Replace names a
 - 9. Optional event
 - 10. Usage from game code
 - 11. Test harness
+- 12. EditMode tests
 
 ## 1. Interface - `Services/CloudConfig/ICloudConfigService.cs`
 
@@ -78,6 +79,19 @@ Setters are `internal` so only code in `Assembly-CSharp` (i.e. platform implemen
 register services: `_Core/AssemblyInfo.cs` grants internals to Assembly-CSharp (where `Assets/_Platforms` compiles), not to `_Project` -
 never call `Set*Service` from game code.
 
+Add the service to the two lists `InitializeAsync` runs after the platform; without them a platform that
+forgets the registration leaves the service null and its flag set:
+
+```csharp
+// RegisterMissingServices
+if (CloudConfig == null) LogMissing(nameof(CloudConfig));
+CloudConfig ??= new NullCloudConfigService();
+
+// SyncCapabilitiesWithServices
+if (CloudConfig is NullCloudConfigService)
+    Capabilities.SupportsCloudConfig = false;
+```
+
 ## 4. Capability flag - `Core/PlatformCapabilities.cs`
 
 ```csharp
@@ -125,3 +139,10 @@ A keyboard- or ContextMenu-driven MonoBehaviour under `Assets/_Project/Testing/`
 `Assets/_Platforms/<Platform>/Testing/` if it uses SDK types), in a test scene under
 `Assets/_Project/Scenes/Test/` that has a `BootstrapGuard` and stays out of Build Settings. Play that
 scene.
+
+## 12. EditMode tests
+
+`Assets/_Core/Tests/Editor/PlatformManagerTests.cs` checks the lists from step 3: add
+`Assert.IsInstanceOf<NullCloudConfigService>(manager.CloudConfig);` to `AssertNullServices` and the flag to
+`AssertAllCapabilitiesCleared`. Claim the flag in `Fakes/FakePlatform.ConfigureCapabilities`
+(`capabilities.SupportsCloudConfig = true;`), so the tests see the manager clear it.

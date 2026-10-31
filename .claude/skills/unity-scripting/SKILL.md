@@ -12,7 +12,8 @@ Naming, async and `timeScale` rules are in CLAUDE.md. The other project skills b
 - `Assets/_Core/<Folder>/` → `_Core.<Folder>`; framework only, never `using _Project...`.
 - `Assets/_Project/<Folder>/` → `_Project.<Folder>`, dropping `Scripts` (`_Project/Scripts/Gameplay/Enemy.cs` → `_Project.Gameplay`).
 - `Assets/_Platforms/<Name>/` → `_Platforms.<Name>.*`: SDK bridges only (`platform-integration`).
-- Public fields only on plain data types (`GameConfig`, `PoolData`, `SaveData` subclasses), matching their style.
+- An asmdef's `rootNamespace` replaces the path up to its folder; in the editor and test assemblies it differs from the folder names (`_Core/Editor/` → `_Core.EditorTools`).
+- Public fields only on plain data types (`PoolData`, `SaveData` subclasses), matching their style.
 - Scenes, prefabs, assets and `.meta` files: `unity-asset-editing`.
 
 ## Pitfalls
@@ -23,7 +24,7 @@ Naming, async and `timeScale` rules are in CLAUDE.md. The other project skills b
 - **WebGL is single-threaded.** Poll with `await Task.Yield()`; measure time with `Time.realtimeSinceStartup`, since pauses and ads set `timeScale` to 0.
 - **Serialization.** Rename serialized fields with `[FormerlySerializedAs]`; append enum values, never insert.
 - **Overrides.** Call `base.Awake/OnEnable/OnDisable/OnDestroy` when overriding `Singleton<T>` or `GameplayPauseHandler`.
-- **Subscriptions.** Pair every subscribe with an unsubscribe in the mirrored method (`OnEnable`/`OnDisable`, or `Init`/`Shutdown` for managers). Lambdas can't be unsubscribed.
+- **Subscriptions.** Pair every subscribe with an unsubscribe in the mirrored method (`OnEnable`/`OnDisable`, or `Init`/`OnDestroy` for managers). Lambdas can't be unsubscribed.
 - **Editor code** (`UnityEditor`) goes in `Assets/_Core/Editor/` or `Assets/_Project/Scripts/Editor/`, or inside `#if UNITY_EDITOR`; otherwise the player build fails.
 - **Hot paths** matter more on WebGL (stop-the-world GC): cache lookups, no per-frame allocations, pool frequent spawns.
 

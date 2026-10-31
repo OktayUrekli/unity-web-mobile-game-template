@@ -21,17 +21,17 @@ Read `Assets/_Core/UI/UIManager.cs` for the API. Copy an existing screen or popu
 3. Add the prefab to the list in `Assets/_Project/ScriptableObjects/Config/UIConfig.asset`. No enum, no id.
 4. Open with `UIManager.Instance.ShowScreen<MyScreen>()` / `ShowPopup<MyPopup>()` (both return the instance for setup); close with `HidePopup<MyPopup>()` or `Close()`. A scene entry script (e.g. `MainMenuSceneEntry`) shows the scene's first screen in `Start`.
 
-Settings UI reads values from `SettingsManager` properties and sets controls with `SetValueWithoutNotify`, so populating doesn't trigger a save.
+Settings UI follows `SettingsPopup`: its buttons call the `SettingsManager` setters, `OnShown` refreshes the labels, and `OnHidden` calls `SettingsManager.Commit()` to write the changes to storage.
 
 ## Animation and effects
 
-- UI tweens run during pause and ads (`timeScale = 0`), so they need `SetUpdate(true)`, `SetLink(gameObject)`, and a kill before restarting and in `OnDisable`; the animated bases already do this. DOTween module shortcuts (`DOFade` on `CanvasGroup`/`Image`, `DOAnchorPos`, `DOColor`...) compile into Assembly-CSharp and are unreachable from `_Core`/`_Project`: use `DOTween.To` (see `AnimatedUIScreen.FadeCanvas`); `Transform` shortcuts like `DOScale` are fine. DOTween settings live in `Assets/Resources/DOTweenSettings.asset` (TextMeshPro module off; enabling it is an Editor step).
+- UI tweens run during pause and ads (`timeScale = 0`), so they need `SetUpdate(true)`, `SetLink(gameObject)`, and a kill before restarting and in `OnDisable`; the animated bases already do this. DOTween module shortcuts (`DOFade` on `CanvasGroup`/`Image`, `DOAnchorPos`, `DOColor`...) compile into Assembly-CSharp and are unreachable from `_Core`/`_Project`: use `DOTween.To` on the property, as `UITween.Fade` does for `CanvasGroup` alpha; `Transform` shortcuts like `DOScale` are fine. DOTween settings live in `Assets/Resources/DOTweenSettings.asset` (TextMeshPro module off; enabling it is an Editor step).
 - `com.coffee.ui-particle`: a plain `ParticleSystem` doesn't render in an Overlay canvas; wrap it in a `UIParticle` and enable unscaled time for effects in pause/reward popups. `com.coffee.ui-effect-snapshot` gives a cheap blurred background instead of a live blur.
 
 ## Input and layout
 
 - `Bootstrapper` creates one persistent `EventSystem` with `InputSystemUIInputModule`. Delete the legacy `EventSystem` Unity auto-adds when you create UI in a scene, or it duplicates.
-- Portrait mobile: reference 1080x1920 and match toward width; `Tools/Template/New Game Setup` sets this on the UI canvas and loading screen prefabs when Orientation is Portrait (1920x1080, match 0.5 otherwise). Test 16:9, 4:3, 21:9, 9:16, 9:19.5. Backgrounds that should bleed under notches go outside `UIRoot`.
+- Portrait mobile: reference 1080x1920 and match toward width; `Tools/Template/New Game Setup` sets this on the UI canvas and loading screen prefabs when Orientation is Portrait (1920x1080, match 0.5 otherwise). Test 16:9, 4:3, 21:9, 9:16, 9:19.5.
 - Text uses `TextMeshProUGUI` (TMP ships in `com.unity.ugui` 2.x). Every visible string comes from a Localization string table (`UI` in `Assets/_Project/Localization`, `Core` for `_Core` code): static labels get a `LocalizeStringEvent` whose Update String targets `TMP_Text.text`; code-driven text uses a serialized `LocalizedString` (+ `Arguments`) and its `StringChanged` event, unsubscribed in `OnDestroy` (see `MainMenuScreen`, `SettingsPopup`). Tables are preloaded at boot, so `StringChanged` fires right away. LiberationSans SDF is static; Turkish ı İ ş ğ come from its dynamic fallback.
 
 ## Verify

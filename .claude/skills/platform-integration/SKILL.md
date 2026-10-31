@@ -36,7 +36,7 @@ Layout: `_Core/Platform/Core/` (`IPlatform`, `PlatformCapabilities`, `PlatformFa
 
 ## Adding a service
 
-Interface (no SDK types, `Action<T>` callbacks) + Null service + `PlatformManager` property and `internal Set<Name>Service` + `Supports<Name>` flag + registration on every `IPlatform` (grep `: IPlatform`). A forgotten registration compiles and leaves the service null. Checklist: `references/new-service-checklist.md`.
+Interface (no SDK types, `Action<T>` callbacks) + Null service + `PlatformManager` property and `internal Set<Name>Service` + `Supports<Name>` flag + registration on every `IPlatform` (grep `: IPlatform`). `PlatformManager.RegisterMissingServices` and `SyncCapabilitiesWithServices` log a forgotten registration, fill in the Null service and clear its flag, but only for the services they list: add the new one to both. Checklist: `references/new-service-checklist.md`.
 
 ## Fallbacks
 
