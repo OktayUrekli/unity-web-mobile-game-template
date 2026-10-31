@@ -125,14 +125,15 @@ namespace _Core.UI.Components
             // TryGetComponent instead of '??': the Editor returns a fake-null for missing components.
             if (_canvasGroup == null && !TryGetComponent(out _canvasGroup))
                 _canvasGroup = gameObject.AddComponent<CanvasGroup>();
-            if (_layoutElement == null)
-                TryGetComponent(out _layoutElement);
+
+            // A hidden button must also give up its slot in a layout group; a default LayoutElement changes nothing
+            // while the button is visible.
+            if (_layoutElement == null && !TryGetComponent(out _layoutElement))
+                _layoutElement = gameObject.AddComponent<LayoutElement>();
 
             _canvasGroup.alpha = visible ? 1f : 0f;
             _canvasGroup.blocksRaycasts = visible;
-
-            if (_layoutElement != null)
-                _layoutElement.ignoreLayout = !visible;
+            _layoutElement.ignoreLayout = !visible;
         }
 
         private void OnAdblockDetected(bool hasAdblock)
