@@ -30,9 +30,10 @@ namespace _Core.Platform.Services.Ads
         private bool _isFinishOwed;
 
         /// <param name="releaseUnstartedOnTimeout">
-        /// True ends a request whose ad never started as soon as AdPolicyService gives up on it; later SDK answers for
-        /// it are ignored. False keeps it in flight until the SDK answers, for SDKs that ignore new requests until then
-        /// (CrazySDK).
+        /// True ends a request whose ad never started as soon as AdPolicyService gives up on it. The tracker ignores
+        /// later SDK answers for it only while no newer request is in flight, so a bridge whose SDK may still answer it
+        /// tags its SDK callbacks with <see cref="Id"/> and checks <see cref="IsCurrent"/>. False keeps it in flight
+        /// until the SDK answers, for SDKs that ignore new requests until then (CrazySDK).
         /// </param>
         /// <param name="onTimedOut">
         /// Called once when AdPolicyService gives up on the request, while <see cref="HasStarted"/> still describes it

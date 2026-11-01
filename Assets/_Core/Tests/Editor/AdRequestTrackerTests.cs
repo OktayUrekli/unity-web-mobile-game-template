@@ -302,19 +302,61 @@ namespace _Core.Tests
         }
 
         [Test]
-        public void OtherResults_AndTimeoutsWhileIdle_AreIgnored()
+        public void OtherResults_AreIgnored()
         {
             AdRequestTracker tracker = Create(releaseUnstartedOnTimeout: true);
-            PublishTimeout(AdType.Rewarded);
-            Assert.AreEqual(0, _timedOutCount);
-
             tracker.TryBegin(AdType.Rewarded, RecordCallback);
+
             EventBus.Publish(new AdRequestCompletedEvent(AdType.Rewarded, AdResult.InProgress));
             EventBus.Publish(new AdRequestCompletedEvent(AdType.Rewarded, AdResult.Failed));
 
             Assert.IsTrue(tracker.IsActive);
             Assert.IsFalse(tracker.IsTimedOut);
             Assert.AreEqual(0, _timedOutCount);
+        }
+
+        [Test]
+        public void TimeoutOfARequestThatEndedDuringItsDelivery_IsIgnored()
+        {
+            AdRequestTracker tracker = Create(releaseUnstartedOnTimeout: true);
+            Action<AdRequestCompletedEvent> sdkAnswers = null;
+            sdkAnswers = _ =>
+            {
+                EventBus.Unsubscribe(sdkAnswers);
+                tracker.Complete(AdResult.Failed);
+            };
+
+            // Subscribed before TryBegin, so it ends the request before the tracker's handler runs. EventBus still
+            // calls that handler, which unsubscribed during the same publish.
+            EventBus.Subscribe(sdkAnswers);
+            tracker.TryBegin(AdType.Rewarded, RecordCallback);
+            PublishTimeout(AdType.Rewarded);
+
+            Assert.AreEqual(0, _timedOutCount, "The hook must not run for a request that already ended.");
+            Assert.IsFalse(tracker.IsTimedOut);
+
+            tracker.TryBegin(AdType.Interstitial, RecordCallback);
+            PublishTimeout(AdType.Interstitial);
+
+            Assert.AreEqual(1, _timedOutCount, "The next request's own timeout must still be handled.");
+            Assert.IsFalse(tracker.IsActive);
+            CollectionAssert.AreEqual(new[] { "Callback:Failed" }, _log);
+        }
+
+        [Test]
+        public void UnstartedRequest_AfterAStartedAd_PublishesNoFinish()
+        {
+            AdRequestTracker tracker = Create(releaseUnstartedOnTimeout: true);
+            tracker.TryBegin(AdType.Rewarded, RecordCallback);
+            tracker.NotifyStarted();
+            tracker.Complete(AdResult.Completed);
+
+            // For example a fullscreen ad that closes without opening: it must not get the earlier ad's finish.
+            tracker.TryBegin(AdType.Interstitial, RecordCallback);
+            tracker.Complete(AdResult.Failed);
+
+            CollectionAssert.AreEqual(
+                new[] { "Started", "Finished:True", "Callback:Completed", "Callback:Failed" }, _log);
         }
 
         [Test]

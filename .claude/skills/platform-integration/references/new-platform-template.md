@@ -180,9 +180,10 @@ namespace _Platforms.MyPortal.Services
     /// </summary>
     public class MyPortalAdsService : IAdsService
     {
-        // True: an ad that never started is dropped when AdPolicyService gives up on it. False only for an SDK
-        // that ignores new requests until it answers the last one (CrazySDK). Pass an onTimedOut hook when the SDK
-        // changes something for the ad that it restores only in its own callbacks.
+        // True: an ad that never started is released when AdPolicyService gives up on it, and the SDK may still
+        // answer it after a newer request began, so every SDK callback checks its request id. False only for an
+        // SDK that ignores new requests until it answers the last one (CrazySDK). Pass an onTimedOut hook when the
+        // SDK changes something for the ad that it restores only in its own callbacks.
         private readonly AdRequestTracker _request = new(releaseUnstartedOnTimeout: true);
 
         public bool IsAdShowing => _request.IsActive;
@@ -204,18 +205,27 @@ namespace _Platforms.MyPortal.Services
 
             int requestId = _request.Id;
 
+            // Answers for an earlier request, which AdPolicyService gave up on, must not end this one.
+            void IfCurrent(Action answer)
+            {
+                if (_request.IsCurrent(requestId))
+                    answer();
+            }
+
             try
             {
                 // Placeholder API: map the vendor's open/rewarded/close/error callbacks. A rewarded ad counts as
                 // completed only after the reward callback, also when an error follows it.
                 MyPortalSdkBridge.ShowRewarded(
-                    onOpen: () => _request.NotifyStarted(),
-                    onRewarded: _request.NotifyRewardEarned,
-                    onClose: () => _request.Complete(_request.IsRewardEarned ? AdResult.Completed : AdResult.Failed),
+                    onOpen: () => IfCurrent(() => _request.NotifyStarted()),
+                    onRewarded: () => IfCurrent(_request.NotifyRewardEarned),
+                    onClose: () => IfCurrent(() =>
+                        _request.Complete(_request.IsRewardEarned ? AdResult.Completed : AdResult.Failed)),
                     onError: error =>
                     {
                         Debug.LogWarning($"MyPortal: rewarded ad failed: {error}");
-                        _request.Complete(_request.IsRewardEarned ? AdResult.Completed : AdResult.Failed);
+                        IfCurrent(() =>
+                            _request.Complete(_request.IsRewardEarned ? AdResult.Completed : AdResult.Failed));
                     });
             }
             catch (Exception exception)
@@ -230,7 +240,8 @@ namespace _Platforms.MyPortal.Services
 
         public void ShowInterstitialAd(Action<AdResult> callback)
         {
-            // Same shape as ShowRewardedAd: open = NotifyStarted, close = Complete(Completed), error = Complete(Failed).
+            // Same shape as ShowRewardedAd, callbacks checked the same way: open = NotifyStarted,
+            // close = Complete(Completed), error = Complete(Failed).
         }
 
         public void PrefetchAd(AdType adType)

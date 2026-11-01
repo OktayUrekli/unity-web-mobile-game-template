@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Threading;
 using _Core.Events;
 using _Core.Events.Ads;
 using _Core.Platform.Services.Ads;
@@ -14,7 +15,8 @@ namespace _Core.Tests
     /// <summary>
     /// EditMode tests for <see cref="AdPolicyService"/>. The fake platform answers synchronously when the
     /// test says so. The policy reads a fake clock (<c>_now</c>) that moves only when a test moves it, and
-    /// <see cref="AdPolicyService.CheckTimeout"/> runs the watchdog's check at once, so no test waits.
+    /// <see cref="AdPolicyService.CheckTimeout"/> runs the watchdog's check at once, so no test waits. One test runs
+    /// the watchdog loop itself, on frames it steps by hand.
     /// </summary>
     public class AdPolicyServiceTests
     {
@@ -359,7 +361,12 @@ namespace _Core.Tests
             policy.CheckTimeout();
             Assert.IsTrue(policy.IsAdShowing, "A started ad is bound by the play timeout only.");
 
-            _now += PlayTimeoutSeconds - StartTimeoutSeconds;
+            // 1 s before the play timeout, counted from the start; already past it counted from the request.
+            _now += PlayTimeoutSeconds - StartTimeoutSeconds - 1f;
+            policy.CheckTimeout();
+            Assert.IsTrue(policy.IsAdShowing, "The play timeout counts from the start, not from the request.");
+
+            _now += 1f;
             policy.CheckTimeout();
 
             CollectionAssert.AreEqual(new[] { AdResult.TimedOut }, _results);
@@ -420,9 +427,9 @@ namespace _Core.Tests
         }
 
         [Test]
-        public void Timeouts_BelowOneSecond_AreRaisedToOneSecond()
+        public void StartTimeout_BelowOneSecond_IsRaisedToOneSecond()
         {
-            var policy = new AdPolicyService(_inner, 0f, 0f, 0f, () => _now);
+            var policy = new AdPolicyService(_inner, 0f, 0f, PlayTimeoutSeconds, () => _now);
 
             policy.ShowRewardedAd(RecordResult);
             _now += 0.5f;
@@ -432,6 +439,56 @@ namespace _Core.Tests
             _now += 0.5f;
             policy.CheckTimeout();
             CollectionAssert.AreEqual(new[] { AdResult.TimedOut }, _results);
+        }
+
+        [Test]
+        public void PlayTimeout_BelowOneSecond_IsRaisedToOneSecond()
+        {
+            var policy = new AdPolicyService(_inner, 0f, StartTimeoutSeconds, 0f, () => _now);
+
+            policy.ShowRewardedAd(RecordResult);
+            EventBus.Publish(new AdStartedEvent());
+            _now += 0.5f;
+            policy.CheckTimeout();
+            Assert.IsTrue(policy.IsAdShowing, "A started ad is not abandoned before 1 s.");
+
+            _now += 0.5f;
+            policy.CheckTimeout();
+            CollectionAssert.AreEqual(new[] { AdResult.TimedOut }, _results);
+        }
+
+        [Test]
+        public void Watchdog_ChecksEveryFrame_AndTimesOutWithoutCheckTimeout()
+        {
+            // Not null: without a context, Task.Yield would continue on the thread pool and race the test.
+            var frames = new ManualFrames();
+            SynchronizationContext previous = SynchronizationContext.Current;
+            SynchronizationContext.SetSynchronizationContext(frames);
+
+            try
+            {
+                AdPolicyService policy = CreatePolicy(0f);
+                policy.ShowRewardedAd(RecordResult);
+
+                for (int frame = 0; frame < 3; frame++)
+                {
+                    _now += 1f;
+                    frames.RunFrame();
+                }
+
+                Assert.IsTrue(policy.IsAdShowing, "Not timed out before the start timeout.");
+
+                _now += StartTimeoutSeconds;
+                frames.RunFrame();
+                CollectionAssert.AreEqual(new[] { AdResult.TimedOut }, _results);
+
+                frames.RunFrame();
+                Assert.AreEqual(0, frames.Pending, "The watchdog loop ends once the request completes.");
+            }
+            finally
+            {
+                SynchronizationContext.SetSynchronizationContext(previous);
+            }
         }
 
         [Test]
@@ -535,6 +592,28 @@ namespace _Core.Tests
 
             CollectionAssert.AreEqual(new[] { AdResult.TimedOut, AdResult.TimedOut }, _results);
             Assert.IsFalse(policy.IsAdShowing);
+        }
+
+        // Queues posted continuations; RunFrame runs those queued before it, like one tick of Unity's context.
+        private sealed class ManualFrames : SynchronizationContext
+        {
+            private readonly List<(SendOrPostCallback Callback, object State)> _queue = new();
+
+            public int Pending => _queue.Count;
+
+            public override void Post(SendOrPostCallback callback, object state)
+            {
+                _queue.Add((callback, state));
+            }
+
+            public void RunFrame()
+            {
+                (SendOrPostCallback Callback, object State)[] work = _queue.ToArray();
+                _queue.Clear();
+
+                foreach ((SendOrPostCallback callback, object state) in work)
+                    callback(state);
+            }
         }
 
         private AdPolicyService CreatePolicy(float interstitialCooldownSeconds)
