@@ -90,7 +90,6 @@ Reklam isteği: oyun kodu `PlatformManager.Instance.Ads` üzerinden ister → re
 | `Tools/Build/Validate Build Settings` | Build almadan build kontrollerini çalıştırır. |
 | `CrazySDK/Development Build` / `Release Build` | CrazyGames için WebGL build alır (CrazySDK'nın kendi build ayarlarıyla). Günlük denemede Development, yüklemeden önce Release kullan. |
 | `CrazySDK/Go to Analyzer` | Build boyutunu ve içeriğini analiz eder. |
-| `Tools/Folder Creator` | Assets altında hiyerarşik klasör yapısı oluşturma penceresi. |
 
 ---
 
