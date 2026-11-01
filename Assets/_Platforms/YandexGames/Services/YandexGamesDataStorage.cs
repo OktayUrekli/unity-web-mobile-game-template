@@ -13,7 +13,9 @@ namespace _Platforms.YandexGames.Services
     /// Saves to the player's Yandex cloud data (<c>player.getData/setData</c>), for guests and signed-in players
     /// alike. All data is loaded once while the SDK initializes, so reads answer from memory; writes update memory
     /// and go to Yandex asynchronously (<see cref="IAsyncSaveStorage"/>), and <c>SaveManager</c> retries a write that
-    /// failed. Reports Yandex's 200 KB limit (<see cref="ILimitedSaveStorage"/>) and never sends data past it.
+    /// failed. Reports Yandex's 200 KB limit and all its keys (<see cref="ILimitedSaveStorage"/>), and refuses a save
+    /// that would grow the data past that limit. A save that does not grow the data, and a delete, still go out, so
+    /// data already past the limit (left by an older build) can shrink back under it.
     /// Registered only when the player data loaded.
     /// </summary>
     public class YandexGamesDataStorage : ISaveStorage, IAsyncSaveStorage, ILimitedSaveStorage
@@ -40,6 +42,11 @@ namespace _Platforms.YandexGames.Services
         /// Yandex's limit for one player's data: 200 KB.
         /// </summary>
         public int LimitBytes => PlayerDataLimitBytes;
+
+        /// <summary>
+        /// Every key of the player's data, loaded at start.
+        /// </summary>
+        public IEnumerable<string> StoredKeys => _data.Keys;
 
         public bool HasSave(string key)
         {
@@ -72,7 +79,10 @@ namespace _Platforms.YandexGames.Services
             int newBytes = _dataBytes - SaveCache.MeasureBytes(key, current) + SaveCache.MeasureBytes(key, data);
 
             // setData sends the whole object. What Yandex does past its limit is undocumented, and one oversized key
-            // could fail every later save, so this storage never sends one. Keys this session never read count too.
+            // could fail every later save, so this storage never grows the data past the limit; a save that does not
+            // grow it still goes out, so data already over the limit can shrink back under it. Keys this session never
+            // read count too. SaveManager counts them as well and refuses such a save before it is queued; this check
+            // covers the rest, for example pending saves of several keys that reach this storage in another order.
             if (newBytes > PlayerDataLimitBytes && newBytes > _dataBytes)
             {
                 return Task.FromException(new InvalidOperationException(

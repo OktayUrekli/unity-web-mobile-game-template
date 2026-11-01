@@ -116,9 +116,18 @@ namespace _Core.Save
             _cache = new SaveCache(_storage);
             _cache.WriteFailed += OnWriteFailed;
 
-            _storageLimitBytes = _storage is ILimitedSaveStorage limited ? Mathf.Max(0, limited.LimitBytes) : 0;
+            var limited = _storage as ILimitedSaveStorage;
+            _storageLimitBytes = limited != null ? Mathf.Max(0, limited.LimitBytes) : 0;
             _sizeWarningLevel = 0;
             _refusedKeys.Clear();
+
+            // Data this session never reads still counts toward the storage's limit (Yandex sends all keys in every
+            // write), so a storage that can list its keys has them all loaded and counted. With a storage that answers
+            // reads from memory, as Yandex's does, this completes before Init returns.
+            IEnumerable<string> storedKeys = limited != null && _storageLimitBytes > 0 ? limited.StoredKeys : null;
+
+            if (storedKeys != null)
+                _ = _cache.PreloadAsync(new List<string>(storedKeys));
 
             string storageLimit = _storageLimitBytes > 0 ? $"{_storageLimitBytes} bytes" : "none";
             Debug.Log(
@@ -129,7 +138,8 @@ namespace _Core.Save
         /// <summary>
         /// Saves any SaveData object as compact JSON. The write reaches storage on the next flush.
         /// A save that would take the data past the storage's own size limit (<see cref="ILimitedSaveStorage"/>) is
-        /// refused with an error, and the last saved data of the key stays.
+        /// refused with an error, and the last saved data of the key stays. With a storage that can't list its keys,
+        /// only keys read or written in this session count toward that limit.
         /// </summary>
         public void Save<T>(string key, T data) where T : SaveData
         {
@@ -407,9 +417,10 @@ namespace _Core.Save
             _flushAt = now + _saveConfig.FlushDelaySeconds;
         }
 
-        // False for a save that would take the data past the storage's own limit: the storage would reject that write
-        // (Yandex possibly every later one too). A save that does not grow its key is always taken, so a game can get
-        // back under the limit. Only keys read or written this session are counted.
+        // False for a save that would take the data past the storage's own limit, which the platform may reject or
+        // drop (with Yandex possibly every later save too, since each one sends all keys). A save that does not grow
+        // its key is always taken, so a game can get back under the limit. Counts the keys read or written this
+        // session, which include every stored key when the storage lists them (Init).
         private bool FitsStorageLimit(string key, string json)
         {
             if (_storageLimitBytes <= 0)

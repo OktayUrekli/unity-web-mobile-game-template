@@ -100,6 +100,10 @@ var YandexGamesBridge = {
       var player = YandexGames.player;
       var sendNow = YandexGames.unloading ||
         (typeof document !== 'undefined' && document.visibilityState === 'hidden');
+
+      // An earlier request may still wait in the SDK's queue with older data and reach Yandex after this one. If the
+      // page stays open, that queue goes on, so the same data also goes into it, behind that request.
+      var requeue = sendNow && YandexGames.queuedWrite;
       YandexGames.queuedWrite = !sendNow;
       YandexGames.promise(function () { return player.setData(YandexGames.data, sendNow); }).then(function () {
         ids.forEach(function (id) { YandexGames.reply(id, true); });
@@ -107,6 +111,12 @@ var YandexGamesBridge = {
         var text = YandexGames.errorText(error);
         ids.forEach(function (id) { YandexGames.reply(id, false, text); });
       });
+
+      if (requeue) {
+        YandexGames.promise(function () { return player.setData(YandexGames.data, false); }).catch(function (error) {
+          console.warn('Yandex: queuing the save behind the earlier one failed: ' + YandexGames.errorText(error));
+        });
+      }
     },
 
     // Runs when the page is hidden or closed, after the SaveManager's own save for that event: when nothing went out

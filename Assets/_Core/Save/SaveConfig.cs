@@ -38,9 +38,9 @@ namespace _Core.Save
         public float MaxFlushDelaySeconds => Mathf.Max(maxFlushDelaySeconds, flushDelaySeconds);
 
         /// <summary>
-        /// This game's own save budget in bytes. <see cref="SaveManager"/> warns against the lower of this and the
-        /// storage's own limit (<see cref="_Core.Platform.Services.Save.ILimitedSaveStorage"/>); only the storage's
-        /// limit refuses saves.
+        /// This game's own save budget in bytes. <see cref="SaveManager"/> logs a warning near, and an error over, the
+        /// lower of this and the storage's own limit (<see cref="_Core.Platform.Services.Save.ILimitedSaveStorage"/>);
+        /// only the storage's limit refuses saves.
         /// </summary>
         public int StorageLimitBytes => storageLimitBytes;
 

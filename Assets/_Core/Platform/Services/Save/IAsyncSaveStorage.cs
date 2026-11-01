@@ -13,7 +13,8 @@ namespace _Core.Platform.Services.Save
     /// writes a key's newest value at once, even while an earlier write of that key is still running, and writes the
     /// key once more after both have ended. While the page stays open, that last write starts after the others ended.
     /// If the page closes first, a storage that applies an earlier request after a later one may keep the older
-    /// value.
+    /// value. This order holds per key: a storage whose every write sends all keys keeps the order across keys
+    /// itself.
     /// </summary>
     public interface IAsyncSaveStorage
     {

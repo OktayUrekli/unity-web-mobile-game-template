@@ -328,6 +328,26 @@ namespace _Core.Tests
             Assert.AreEqual(1, _storage.SaveCount);
         }
 
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Save_CountsStoredKeysTheSessionNeverRead_WhenTheStorageListsThem(bool listsKeys)
+        {
+            // About 160 bytes in a key the session never reads.
+            _storage.Values["other_key"] = new string('x', 150);
+            _storage.LimitBytes = 200;
+            _storage.ListsStoredKeys = listsKeys;
+            SaveManager manager = CreateManager(_storage, CreateConfig());
+
+            if (listsKeys)
+                LogAssert.Expect(LogType.Error, new Regex($"SaveManager: '{Key}' was not saved"));
+
+            // About 110 bytes: under the limit alone, over it with the other key.
+            manager.Save(Key, new TestSaveData { level = 1 });
+
+            Assert.AreEqual(!listsKeys, manager.HasPendingChanges,
+                "Only a storage that lists its keys has the keys the session never read counted.");
+        }
+
         [TestCase(300, 1024 * 1024)]
         [TestCase(1024 * 1024, 300)]
         public void SizeWarnings_UseTheLowerOfTheStorageLimitAndSaveConfig(int storageLimitBytes, int saveBudgetBytes)

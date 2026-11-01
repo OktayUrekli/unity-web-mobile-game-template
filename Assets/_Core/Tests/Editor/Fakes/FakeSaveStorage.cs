@@ -44,6 +44,15 @@ namespace _Core.Tests.Fakes
         /// </summary>
         public int LimitBytes { get; set; }
 
+        /// <summary>
+        /// When true, <see cref="StoredKeys"/> lists the keys of <see cref="Values"/>; false, the default, reports
+        /// null like a storage that can't list its keys.
+        /// </summary>
+        public bool ListsStoredKeys { get; set; }
+
+        /// <inheritdoc />
+        public IEnumerable<string> StoredKeys => ListsStoredKeys ? Values.Keys : null;
+
         /// <inheritdoc />
         public bool HasSave(string key)
         {

@@ -274,9 +274,9 @@ is not ready is acceptable in the real service because the platform only registe
 successful init.
 
 If the platform caps its save data, the storage also implements `ILimitedSaveStorage` (bytes counted
-as `SaveCache.MeasureBytes` counts them), and the platform passes the same limit to its PlayerPrefs
-fallback (`new PlayerPrefsSaveStorage(limitBytes)`), so Editor runs refuse what the platform would
-reject.
+as `SaveCache.MeasureBytes` counts them; `StoredKeys` lists every stored key when the SDK can, null
+otherwise), and the platform passes the same limit to its PlayerPrefs fallback
+(`new PlayerPrefsSaveStorage(limitBytes)`), so Editor runs refuse saves past the platform's limit too.
 
 ## Registration
 

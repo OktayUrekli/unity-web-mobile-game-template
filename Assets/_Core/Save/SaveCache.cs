@@ -68,7 +68,7 @@ namespace _Core.Save
 
         /// <summary>
         /// Approximate size in bytes of all keys and values known to the cache, counted as <see cref="MeasureBytes"/>
-        /// counts them. Keys never read or written in this session are not counted.
+        /// counts them. Keys never read, preloaded or written in this session are not counted.
         /// </summary>
         public int TotalBytes { get; private set; }
 

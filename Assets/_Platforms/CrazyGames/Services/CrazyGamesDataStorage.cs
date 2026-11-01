@@ -1,6 +1,7 @@
 // Compiled only when CrazyGames is the selected platform (Tools/Template/Platform).
 #if PLATFORM_CRAZYGAMES
 using System;
+using System.Collections.Generic;
 using _Core.Platform.Services.Save;
 using CrazyGames;
 
@@ -18,6 +19,11 @@ namespace _Platforms.CrazyGames.Services
         /// CrazyGames' data limit: 1 MB.
         /// </summary>
         public int LimitBytes => DataLimitBytes;
+
+        /// <summary>
+        /// Null: the CrazyGames Data API can't list its keys.
+        /// </summary>
+        public IEnumerable<string> StoredKeys => null;
 
         public bool HasSave(string key)
         {

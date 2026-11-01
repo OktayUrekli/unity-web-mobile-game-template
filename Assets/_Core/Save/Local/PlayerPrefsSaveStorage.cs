@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using _Core.Platform.Services.Save;
 using UnityEngine;
 
@@ -49,6 +50,11 @@ namespace _Core.Save.Local
         /// lower limit given to the constructor.
         /// </summary>
         public int LimitBytes => _limitBytes;
+
+        /// <summary>
+        /// Null: PlayerPrefs can't list their keys.
+        /// </summary>
+        public IEnumerable<string> StoredKeys => null;
 
         /// <inheritdoc />
         public bool HasSave(string key)
