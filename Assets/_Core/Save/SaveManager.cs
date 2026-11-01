@@ -20,6 +20,8 @@ namespace _Core.Save
     /// Reads and writes go through an in-memory <see cref="SaveCache"/>; changes are
     /// flushed to storage after a short debounce (see <see cref="SaveConfig"/>), when the
     /// app loses focus/pauses/quits, when a WebGL page is hidden or closed, or when <see cref="Flush"/> is called.
+    /// Saves are checked against the storage's own size limit (<see cref="ILimitedSaveStorage"/>) and
+    /// <see cref="SaveConfig.StorageLimitBytes"/>, the game's save budget.
     /// Generic and reusable across projects.
     /// </summary>
     public class SaveManager : Singleton<SaveManager>
@@ -39,6 +41,12 @@ namespace _Core.Save
         private bool _retryScheduled;
         private float _retryDelay = MinRetryDelaySeconds;
         private int _sizeWarningLevel;
+
+        // The storage's own limit, 0 for none; saves past it are refused.
+        private int _storageLimitBytes;
+
+        // Keys whose last save was refused; the error is logged once until a save of the key is accepted.
+        private readonly HashSet<string> _refusedKeys = new();
 
 #if UNITY_WEBGL && !UNITY_EDITOR
         private bool _listensForPageHide;
@@ -66,6 +74,12 @@ namespace _Core.Save
         /// Test seam: true while a debounced flush or a retry is waiting for <c>Update</c>.
         /// </summary>
         internal bool IsFlushScheduled => _flushScheduled;
+
+        // The lower of the storage's limit and SaveConfig's budget; read on each use, so Inspector edits of SaveConfig
+        // apply in Play Mode.
+        private int SizeLimitBytes => _storageLimitBytes > 0
+            ? Mathf.Min(_storageLimitBytes, _saveConfig.StorageLimitBytes)
+            : _saveConfig.StorageLimitBytes;
 
         /// <summary>
         /// Picks the storage backend and creates the cache. Called by the Bootstrapper
@@ -102,11 +116,20 @@ namespace _Core.Save
             _cache = new SaveCache(_storage);
             _cache.WriteFailed += OnWriteFailed;
 
-            Debug.Log($"SaveManager: using {_storage.GetType().Name}.");
+            _storageLimitBytes = _storage is ILimitedSaveStorage limited ? Mathf.Max(0, limited.LimitBytes) : 0;
+            _sizeWarningLevel = 0;
+            _refusedKeys.Clear();
+
+            string storageLimit = _storageLimitBytes > 0 ? $"{_storageLimitBytes} bytes" : "none";
+            Debug.Log(
+                $"SaveManager: using {_storage.GetType().Name}; storage limit {storageLimit}, " +
+                $"save budget {_saveConfig.StorageLimitBytes} bytes.");
         }
 
         /// <summary>
         /// Saves any SaveData object as compact JSON. The write reaches storage on the next flush.
+        /// A save that would take the data past the storage's own size limit (<see cref="ILimitedSaveStorage"/>) is
+        /// refused with an error, and the last saved data of the key stays.
         /// </summary>
         public void Save<T>(string key, T data) where T : SaveData
         {
@@ -133,6 +156,9 @@ namespace _Core.Save
                 Debug.LogException(e);
                 return;
             }
+
+            if (!FitsStorageLimit(key, json))
+                return;
 
             _cache.Set(key, json);
             CheckSize();
@@ -184,6 +210,7 @@ namespace _Core.Save
             if (!EnsureInitialized())
                 return;
 
+            _refusedKeys.Remove(key);
             _cache.Remove(key);
             ScheduleFlush();
         }
@@ -367,9 +394,40 @@ namespace _Core.Save
             _flushAt = now + _saveConfig.FlushDelaySeconds;
         }
 
+        // False for a save that would take the data past the storage's own limit: the storage would reject that write
+        // (Yandex possibly every later one too). A save that does not grow its key is always taken, so a game can get
+        // back under the limit. Only keys read or written this session are counted.
+        private bool FitsStorageLimit(string key, string json)
+        {
+            if (_storageLimitBytes <= 0)
+            {
+                _refusedKeys.Remove(key);
+                return true;
+            }
+
+            int newBytes = SaveCache.MeasureBytes(key, json);
+            int currentBytes = _cache.GetBytes(key);
+            int newTotal = _cache.TotalBytes - currentBytes + newBytes;
+
+            if (newBytes <= currentBytes || newTotal <= _storageLimitBytes)
+            {
+                _refusedKeys.Remove(key);
+                return true;
+            }
+
+            if (_refusedKeys.Add(key))
+            {
+                Debug.LogError(
+                    $"SaveManager: '{key}' was not saved: the save data would be {newTotal} bytes, over the " +
+                    $"{_storageLimitBytes} byte limit of {_storage.GetType().Name}. The last saved '{key}' is kept.");
+            }
+
+            return false;
+        }
+
         private void CheckSize()
         {
-            int limit = _saveConfig.StorageLimitBytes;
+            int limit = SizeLimitBytes;
             int total = _cache.TotalBytes;
 
             // 0 = fine, 1 = near the limit, 2 = over it. Log only when the level rises.
@@ -381,7 +439,7 @@ namespace _Core.Save
                 {
                     Debug.LogError(
                         $"SaveManager: save data is {total} bytes, over the {limit} byte storage limit. " +
-                        "The platform may reject it.");
+                        "Make the save data smaller.");
                 }
                 else
                 {

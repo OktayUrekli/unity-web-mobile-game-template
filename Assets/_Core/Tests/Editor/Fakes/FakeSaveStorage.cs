@@ -7,7 +7,7 @@ namespace _Core.Tests.Fakes
     /// <summary>
     /// In-memory synchronous <see cref="ISaveStorage"/> that counts calls and can be told to fail.
     /// </summary>
-    public class FakeSaveStorage : ISaveStorage
+    public class FakeSaveStorage : ISaveStorage, ILimitedSaveStorage
     {
         /// <summary>
         /// The stored values by key; tests may seed or inspect it directly.
@@ -38,6 +38,11 @@ namespace _Core.Tests.Fakes
         /// When true, <see cref="HasSave"/> and <see cref="Load"/> throw an <see cref="InvalidOperationException"/>.
         /// </summary>
         public bool ThrowOnRead { get; set; }
+
+        /// <summary>
+        /// The storage's own size limit reported to <c>SaveManager</c>; 0, the default, for none.
+        /// </summary>
+        public int LimitBytes { get; set; }
 
         /// <inheritdoc />
         public bool HasSave(string key)

@@ -3,7 +3,7 @@ using UnityEngine;
 namespace _Core.Save
 {
     /// <summary>
-    /// Tunables for <see cref="SaveManager"/>: write debouncing and storage size limits.
+    /// Tunables for <see cref="SaveManager"/>: write debouncing and the save size budget.
     /// </summary>
     [CreateAssetMenu(fileName = "SaveConfig", menuName = "Configuration/Save Config")]
     public class SaveConfig : ScriptableObject
@@ -16,11 +16,14 @@ namespace _Core.Save
         [Min(0f)]
         [SerializeField] private float maxFlushDelaySeconds = 5f;
 
-        [Tooltip("Storage quota in bytes (CrazyGames Data module: 1 MB).")]
+        [Tooltip("This game's own save budget in bytes: a warning near it and an error over it; nothing is refused. " +
+                 "The storage's own limit (Yandex 200 KB, CrazyGames and WebGL PlayerPrefs 1 MB) applies when it is " +
+                 "lower, and a save that would pass that limit is refused.")]
         [Min(1)]
         [SerializeField] private int storageLimitBytes = 1024 * 1024;
 
-        [Tooltip("Fraction of the quota at which a warning is logged.")]
+        [Tooltip("Fraction of the size limit (the lower of the storage's own limit and the save budget) at which a " +
+                 "warning is logged.")]
         [Range(0.1f, 1f)]
         [SerializeField] private float sizeWarningThreshold = 0.8f;
 
@@ -35,12 +38,15 @@ namespace _Core.Save
         public float MaxFlushDelaySeconds => Mathf.Max(maxFlushDelaySeconds, flushDelaySeconds);
 
         /// <summary>
-        /// Storage quota in bytes.
+        /// This game's own save budget in bytes. <see cref="SaveManager"/> warns against the lower of this and the
+        /// storage's own limit (<see cref="_Core.Platform.Services.Save.ILimitedSaveStorage"/>); only the storage's
+        /// limit refuses saves.
         /// </summary>
         public int StorageLimitBytes => storageLimitBytes;
 
         /// <summary>
-        /// Fraction of <see cref="StorageLimitBytes"/> at which a warning is logged.
+        /// Fraction of the size limit (the lower of the storage's own limit and <see cref="StorageLimitBytes"/>) at
+        /// which a warning is logged.
         /// </summary>
         public float SizeWarningThreshold => sizeWarningThreshold;
     }

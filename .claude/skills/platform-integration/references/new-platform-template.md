@@ -262,6 +262,11 @@ Mirror `CrazyGamesDataStorage.EnsureSdkReady()`: throwing `InvalidOperationExcep
 is not ready is acceptable in the real service because the platform only registers it after a
 successful init.
 
+If the platform caps its save data, the storage also implements `ILimitedSaveStorage` (bytes counted
+as `SaveCache.MeasureBytes` counts them), and the platform passes the same limit to its PlayerPrefs
+fallback (`new PlayerPrefsSaveStorage(limitBytes)`), so Editor runs refuse what the platform would
+reject.
+
 ## Registration
 
 `_Core` never references a bridge; the bridge registers itself before the bootstrap scene loads

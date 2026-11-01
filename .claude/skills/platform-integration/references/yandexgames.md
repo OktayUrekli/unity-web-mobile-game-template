@@ -24,7 +24,7 @@ The YandexGames WebGL template loads `/sdk.js` (a relative path, required for up
 - `game_api_pause`/`game_api_resume` fire around Yandex's ads (including the automatic start-up ad), purchase windows, hidden tabs and minimized windows. The SDK itself calls `GameplayAPI.stop()` on pause and `start()` on resume; the jslib calls `stop()` again after a resume when the game had reported gameplay as stopped meanwhile (pause menu).
 - `LoadingAPI.ready()` is a moderation requirement; `Bootstrapper` sends it through `GameReady()` once the first scene is shown.
 - The game must start in `i18n.lang` (requirement 2.14, checked per language on the debug panel). `LocalizationManager` does, unless the player picked a language.
-- `setData`: 200 KB per player, 100 calls per 5 minutes; `flush` false queues the write. Replace versus merge is undocumented, so the bridge always sends every key. `SaveConfig`'s size warning defaults to CrazyGames' 1 MB: lower its storage limit for a Yandex game.
+- `setData`: 200 KB per player, 100 calls per 5 minutes; `flush` false queues the write. Replace versus merge is undocumented, so the bridge always sends every key. What Yandex does past 200 KB is undocumented and every call sends the whole object, so `YandexGamesDataStorage` never sends data past the limit; it and the PlayerPrefs fallback (the Editor included) report the limit through `ILimitedSaveStorage`.
 - Leaderboards and reviews work only for signed-in players; `setScore` at most once per second, never negative.
 - Yandex decides how often fullscreen ads show; a call too soon closes with `wasShown` false. Rewarded ads have no frequency limit. `PlatformConfig.InterstitialCooldownSeconds` still applies on top.
 

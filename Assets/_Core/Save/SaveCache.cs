@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 using _Core.Platform.Services.Save;
 using UnityEngine;
@@ -68,10 +67,29 @@ namespace _Core.Save
         public bool HasWritesInFlight => _writesInFlight.Count > 0 || _rereading.Count > 0;
 
         /// <summary>
-        /// Approximate UTF-8 size in bytes of all keys and values known to the cache.
-        /// Keys never read or written in this session are not counted.
+        /// Approximate size in bytes of all keys and values known to the cache, counted as <see cref="MeasureBytes"/>
+        /// counts them. Keys never read or written in this session are not counted.
         /// </summary>
         public int TotalBytes { get; private set; }
+
+        /// <summary>
+        /// Bytes a key and its value count toward a storage's size limit: UTF-8 inside JSON strings, the way web
+        /// storages serialize saves, so quotes, backslashes and control characters count more than once. 0 when
+        /// <paramref name="value"/> is null.
+        /// </summary>
+        public static int MeasureBytes(string key, string value)
+        {
+            return value == null ? 0 : JsonStringBytes(key) + JsonStringBytes(value);
+        }
+
+        /// <summary>
+        /// Bytes <paramref name="key"/> counts toward <see cref="TotalBytes"/> now; 0 when it holds no value or was
+        /// never read.
+        /// </summary>
+        internal int GetBytes(string key)
+        {
+            return _sizes.TryGetValue(key, out int size) ? size : 0;
+        }
 
         /// <summary>
         /// Gets the stored value for <paramref name="key"/>, reading storage on first access.
@@ -357,13 +375,47 @@ namespace _Core.Save
             if (_sizes.TryGetValue(key, out int oldSize))
                 TotalBytes -= oldSize;
 
-            int newSize = value == null
-                ? 0
-                : Encoding.UTF8.GetByteCount(key) + Encoding.UTF8.GetByteCount(value);
+            int newSize = MeasureBytes(key, value);
 
             _sizes[key] = newSize;
             _values[key] = value;
             TotalBytes += newSize;
+        }
+
+        // UTF-8 bytes of text written as a JSON string, without its surrounding quotes. Like JSON.stringify, this
+        // escapes quotes, backslashes, control characters and lone surrogates.
+        private static int JsonStringBytes(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return 0;
+
+            int bytes = 0;
+
+            for (int i = 0; i < text.Length; i++)
+            {
+                char c = text[i];
+
+                // A character outside the Basic Multilingual Plane: 4 bytes for the surrogate pair.
+                if (char.IsHighSurrogate(c) && i + 1 < text.Length && char.IsLowSurrogate(text[i + 1]))
+                {
+                    bytes += 4;
+                    i++;
+                    continue;
+                }
+
+                if (c == '"' || c == '\\' || c == '\b' || c == '\f' || c == '\n' || c == '\r' || c == '\t')
+                    bytes += 2;
+                else if (c < 0x20 || char.IsSurrogate(c))
+                    bytes += 6;
+                else if (c < 0x80)
+                    bytes += 1;
+                else if (c < 0x800)
+                    bytes += 2;
+                else
+                    bytes += 3;
+            }
+
+            return bytes;
         }
     }
 }

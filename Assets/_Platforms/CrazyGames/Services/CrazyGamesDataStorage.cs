@@ -7,10 +7,18 @@ using CrazyGames;
 namespace _Platforms.CrazyGames.Services
 {
     /// <summary>
-    /// Stores save data using the CrazyGames Data API.
+    /// Stores save data using the CrazyGames Data API, and reports its 1 MB limit (<see cref="ILimitedSaveStorage"/>).
     /// </summary>
-    public class CrazyGamesDataStorage : ISaveStorage
+    public class CrazyGamesDataStorage : ISaveStorage, ILimitedSaveStorage
     {
+        // CrazyGames stops backing up data past 1 MB; rounded down.
+        private const int DataLimitBytes = 1000 * 1000;
+
+        /// <summary>
+        /// CrazyGames' data limit: 1 MB.
+        /// </summary>
+        public int LimitBytes => DataLimitBytes;
+
         public bool HasSave(string key)
         {
             EnsureSdkReady();

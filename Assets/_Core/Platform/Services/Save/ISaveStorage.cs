@@ -1,7 +1,8 @@
 namespace _Core.Platform.Services.Save
 {
     /// <summary>
-    /// Defines platform-independent save storage operations.
+    /// Defines platform-independent save storage operations. A storage whose writes finish later also implements
+    /// <see cref="IAsyncSaveStorage"/>; one with a size limit implements <see cref="ILimitedSaveStorage"/>.
     /// </summary>
     public interface ISaveStorage
     {

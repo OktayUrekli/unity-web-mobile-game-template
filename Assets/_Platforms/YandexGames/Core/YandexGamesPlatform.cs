@@ -89,7 +89,7 @@ namespace _Platforms.YandexGames.Core
                 else
                 {
                     Debug.LogWarning("Yandex: Player data did not load. Saving locally (PlayerPrefs) instead.");
-                    manager.SetStorageService(new PlayerPrefsSaveStorage());
+                    manager.SetStorageService(new PlayerPrefsSaveStorage(YandexGamesDataStorage.PlayerDataLimitBytes));
                 }
 
                 manager.SetLeaderboardService(CreateLeaderboardService());
@@ -99,8 +99,9 @@ namespace _Platforms.YandexGames.Core
             {
                 manager.SetGameService(new NullGameService());
                 manager.SetAdsService(new NullAdsService());
-                // Never NullSaveStorage: it drops all saves silently.
-                manager.SetStorageService(new PlayerPrefsSaveStorage());
+                // Never NullSaveStorage: it drops all saves silently. With Yandex's limit, the Editor (where the SDK
+                // never runs) and this local fallback refuse saves that Yandex would reject.
+                manager.SetStorageService(new PlayerPrefsSaveStorage(YandexGamesDataStorage.PlayerDataLimitBytes));
                 manager.SetLeaderboardService(new NullLeaderboardService());
                 manager.SetReviewService(new NullReviewService());
             }

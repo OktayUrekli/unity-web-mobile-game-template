@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using _Core.Platform.Services.Save;
 using _Core.Save;
+using _Core.Save.Local;
 using _Core.Tests.Fakes;
 using NUnit.Framework;
 using UnityEditor;
@@ -250,7 +251,7 @@ namespace _Core.Tests
         }
 
         [Test]
-        public void Save_OverStorageLimit_LogsErrorOnlyWhenTheLevelRises()
+        public void Save_OverSaveConfigLimit_LogsErrorOnceButStillSaves()
         {
             SaveManager manager = CreateManager(_storage, CreateConfig(storageLimitBytes: 10));
 
@@ -259,6 +260,11 @@ namespace _Core.Tests
 
             // Still over the limit: no second error (an unexpected error would fail the test).
             manager.Save(Key, CreateSampleData());
+
+            // SaveConfig's budget warns but never refuses a save.
+            Assert.IsTrue(manager.HasPendingChanges);
+            manager.Flush();
+            Assert.AreEqual(1, _storage.SaveCount);
         }
 
         [Test]
@@ -271,6 +277,67 @@ namespace _Core.Tests
 
             LogAssert.Expect(LogType.Warning, new Regex("close to the 2000 byte storage limit"));
             manager.Save(Key, data);
+        }
+
+        [Test]
+        public void Save_PastTheStoragesOwnLimit_IsRefusedAndKeepsTheLastSavedData()
+        {
+            _storage.LimitBytes = 200;
+            SaveManager manager = CreateManager(_storage, CreateConfig());
+
+            // About 110 bytes.
+            manager.Save(Key, new TestSaveData { level = 1 });
+            manager.Flush();
+            Assert.AreEqual(1, _storage.SaveCount);
+
+            var tooLarge = new TestSaveData { level = 1, playerName = new string('x', 300) };
+
+            LogAssert.Expect(LogType.Error, new Regex($"SaveManager: '{Key}' was not saved"));
+            manager.Save(Key, tooLarge);
+
+            Assert.IsFalse(manager.HasPendingChanges, "A refused save must not reach storage.");
+            Assert.IsTrue(manager.Load(Key, out TestSaveData loaded));
+            Assert.AreEqual(1, loaded.level);
+            Assert.AreEqual(TestSaveData.DefaultPlayerName, loaded.playerName, "The last accepted save is kept.");
+
+            // Refused again: no second error (an unexpected error would fail the test).
+            manager.Save(Key, tooLarge);
+
+            manager.Flush();
+            Assert.AreEqual(1, _storage.SaveCount);
+        }
+
+        [Test]
+        public void Save_ThatShrinksTheData_IsTakenEvenPastTheStoragesLimit()
+        {
+            _storage.Values[Key] = JsonUtility.ToJson(new TestSaveData { playerName = new string('x', 300) });
+            _storage.LimitBytes = 200;
+            SaveManager manager = CreateManager(_storage, CreateConfig());
+
+            // Read, so the stored data is counted.
+            manager.Load(Key, out TestSaveData _);
+
+            LogAssert.Expect(LogType.Error, new Regex("over the 200 byte storage limit"));
+            manager.Save(Key, new TestSaveData { playerName = new string('x', 250) });
+
+            Assert.IsTrue(manager.HasPendingChanges, "A save that does not grow the data is always taken.");
+            manager.Flush();
+            Assert.AreEqual(1, _storage.SaveCount);
+        }
+
+        [TestCase(300, 1024 * 1024)]
+        [TestCase(1024 * 1024, 300)]
+        public void SizeWarnings_UseTheLowerOfTheStorageLimitAndSaveConfig(int storageLimitBytes, int saveBudgetBytes)
+        {
+            _storage.LimitBytes = storageLimitBytes;
+            SaveManager manager = CreateManager(
+                _storage, CreateConfig(storageLimitBytes: saveBudgetBytes, sizeWarningThreshold: 0.5f));
+
+            // About 200 bytes: over half of 300, under 300.
+            LogAssert.Expect(LogType.Warning, new Regex("close to the 300 byte storage limit"));
+            manager.Save(Key, new TestSaveData { playerName = new string('x', 100) });
+
+            Assert.IsTrue(manager.HasPendingChanges, "A save under both limits is taken.");
         }
 
         [Test]
@@ -488,6 +555,22 @@ namespace _Core.Tests
             Assert.AreEqual(0, cache.TotalBytes);
         }
 
+        [TestCase("k", null, 0)]
+        [TestCase("k", "", 1)]
+        [TestCase("k", "abc", 4)]
+        [TestCase("k", "\"", 3)]
+        [TestCase("k", "\\", 3)]
+        [TestCase("k", "\n", 3)]
+        [TestCase("k", "\u0001", 7)]
+        [TestCase("k", "\u00e7", 3)]
+        [TestCase("k", "\u20ac", 4)]
+        [TestCase("k", "\U0001F600", 5)]
+        [TestCase("\"", "x", 3)]
+        public void SaveCache_MeasureBytes_CountsUtf8AndJsonEscapes(string key, string value, int expected)
+        {
+            Assert.AreEqual(expected, SaveCache.MeasureBytes(key, value));
+        }
+
         [Test]
         public void SaveCache_AsyncWriteInFlight_KeepsNewChangeDirty()
         {
@@ -616,6 +699,21 @@ namespace _Core.Tests
             Assert.AreEqual(1, _asyncStorage.SaveAsyncCount);
             Assert.AreEqual("mine", _asyncStorage.SavedData[0]);
             Assert.IsFalse(cache.HasPendingChanges);
+        }
+
+        // ---------- PlayerPrefsSaveStorage ----------
+
+        [Test]
+        public void PlayerPrefsSaveStorage_LimitBytes_IsTheLowerOfItsOwnAndTheGivenLimit()
+        {
+            Assert.AreEqual(200000, new PlayerPrefsSaveStorage(200000).LimitBytes);
+#if UNITY_WEBGL
+            Assert.AreEqual(1000000, new PlayerPrefsSaveStorage().LimitBytes, "1 MB of PlayerPrefs on the web.");
+            Assert.AreEqual(1000000, new PlayerPrefsSaveStorage(5000000).LimitBytes);
+#else
+            Assert.AreEqual(0, new PlayerPrefsSaveStorage().LimitBytes, "PlayerPrefs have no limit outside WebGL.");
+            Assert.AreEqual(5000000, new PlayerPrefsSaveStorage(5000000).LimitBytes);
+#endif
         }
 
         // ---------- Helpers ----------

@@ -62,7 +62,7 @@ Game code never calls `GameplayStart/Stop`; `GameplayStateManager` keeps them pa
 
 - `Game.Settings` = `{ disableChat, muteAudio }`. The settings listener fires when the portal changes them; the project exposes `muteAudio` as `IGameService.IsAudioMutedByPlatform` and publishes `PlatformAudioMuteChangedEvent`. In the Editor the listener never fires: call the service's public `OnSettingsChanged(GameSettings)` to simulate it.
 - Editor user responses come from `CrazyGamesSettings` (`getUserResponse`, `authPromptResponse`, ...).
-- `Data` (`SetString/GetString/HasKey/DeleteKey/DeleteAll`) goes to the portal data API on WebGL and PlayerPrefs in the Editor. `SetString(key, null)` deletes. The JS side swallows errors; C# gets no failure signal. `User.SyncUnityGameData()` pushes PlayerPrefs to the portal's automatic progress save.
+- `Data` (`SetString/GetString/HasKey/DeleteKey/DeleteAll`) goes to the portal data API on WebGL and PlayerPrefs in the Editor. `SetString(key, null)` deletes. The JS side swallows errors; C# gets no failure signal. Data past 1 MB is no longer backed up, so `CrazyGamesDataStorage` reports that limit (`ILimitedSaveStorage`) and `SaveManager` refuses a save past it. `User.SyncUnityGameData()` pushes PlayerPrefs to the portal's automatic progress save.
 
 ## Debug logging
 
