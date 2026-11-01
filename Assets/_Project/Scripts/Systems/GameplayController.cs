@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using _Core.Audio;
 using _Core.Events;
 using _Core.Events.Platform;
@@ -188,7 +189,7 @@ namespace _Project.Systems
 
             // Loading the menu hides the pause popup, which releases its pause; the interstitial pauses on its own.
             if (showInterstitial)
-                PlatformManager.Instance.Ads.ShowInterstitialAd(_ => LoadMenu());
+                PlatformManager.Instance.Ads.ShowInterstitialAd(result => _ = LoadMenuAfterAdAsync());
             else
                 LoadMenu();
         }
@@ -196,6 +197,15 @@ namespace _Project.Systems
         private static void LoadMenu()
         {
             _ = SceneTransition.LoadAsync(GameScenes.MainMenu);
+        }
+
+        // An ad SDK may still write Time.timeScale right after its close callback returns (the Google Mobile Ads
+        // Editor placeholder sets 1). Starting the transition, which pauses the game, one Task.Yield later keeps
+        // PauseManager from taking that write for a change made outside it.
+        private static async Task LoadMenuAfterAdAsync()
+        {
+            await Task.Yield();
+            LoadMenu();
         }
 
         private void GameOver()
