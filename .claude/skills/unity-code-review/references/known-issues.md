@@ -19,7 +19,6 @@ Defects currently present in this repository's code, scenes and settings. Other 
 ## Save
 
 - `Assets/_Core/Save/SaveManager.cs` - `SaveManager.OnPageHidden` - **Nit** - a WebGL page that is hidden or closed flushes through `SaveManager.jslib` (`visibilitychange`, `pagehide`), but the write itself is up to the storage: the PlayerPrefs fallback syncs to IndexedDB asynchronously, and the browser may close the page before that finishes. **Fix:** none needed unless seen; key moments already call `Flush()`.
-- `Assets/_Core/Save/SaveCache.cs` - `SaveCache.Flush` - **Nit** - a key whose asynchronous write (Yandex) is still running is skipped, and a newer value saved meanwhile waits for the retry; when the page is hidden or closed in that window, the retry may never run and the newer value is lost. **Fix:** on page hide, also write dirty keys whose earlier write is still running (the Yandex bridge sends the whole object, so the last call carries the newest data).
 - `Assets/_Core/Save/SaveManager.cs` - `SaveManager.Load` / `Save` - **Nit** - data written by a newer build (`saveVersion` above `CurrentVersion`) loads with its unknown fields ignored, and the next `Save` from the older build drops them. Only matters if an older build can run after a newer one (cached page, staged rollout). **Fix:** keep the raw JSON of newer-version data and refuse to overwrite it, if this is ever seen.
 
 ## Settings

@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Threading;
+using _Core.Platform.Services.Save;
 using _Core.Save;
 using _Core.Tests.Fakes;
 using NUnit.Framework;
@@ -14,6 +16,9 @@ namespace _Core.Tests
     /// The manager is added to a hidden GameObject (Awake does not run in Edit Mode, so the singleton
     /// Instance is untouched) and initialized through the internal Init(storage, config) seam with a fake
     /// storage. Update never runs, so debounced writes reach storage only through an explicit Flush.
+    /// Each test runs without a SynchronizationContext, so the cache's await continuations run inside the fake
+    /// storage's CompleteWrite, FailWrite and CompleteLoads, and a test can check what happens after a write or read
+    /// ends.
     /// </summary>
     public class SaveManagerTests
     {
@@ -23,26 +28,39 @@ namespace _Core.Tests
         private readonly List<UnityEngine.Object> _createdObjects = new();
         private FakeSaveStorage _storage;
         private FakeAsyncSaveStorage _asyncStorage;
+        private SynchronizationContext _previousSyncContext;
 
         [SetUp]
         public void SetUp()
         {
             _storage = new FakeSaveStorage();
             _asyncStorage = null;
+
+            // See the class summary; TearDown restores the context.
+            _previousSyncContext = SynchronizationContext.Current;
+            SynchronizationContext.SetSynchronizationContext(null);
         }
 
         [TearDown]
         public void TearDown()
         {
-            _asyncStorage?.CompleteAllWrites();
-
-            foreach (UnityEngine.Object created in _createdObjects)
+            try
             {
-                if (created != null)
-                    UnityEngine.Object.DestroyImmediate(created);
-            }
+                _asyncStorage?.CompleteLoads();
+                _asyncStorage?.CompleteAllWrites();
 
-            _createdObjects.Clear();
+                foreach (UnityEngine.Object created in _createdObjects)
+                {
+                    if (created != null)
+                        UnityEngine.Object.DestroyImmediate(created);
+                }
+
+                _createdObjects.Clear();
+            }
+            finally
+            {
+                SynchronizationContext.SetSynchronizationContext(_previousSyncContext);
+            }
         }
 
         // ---------- SaveManager ----------
@@ -363,6 +381,29 @@ namespace _Core.Tests
             AssertSameData(saved, JsonUtility.FromJson<TestSaveData>(_storage.Values[Key]));
         }
 
+        [Test]
+        public void OnPageHidden_WritesAKeyWhoseEarlierWriteIsStillRunning()
+        {
+            _asyncStorage = new FakeAsyncSaveStorage();
+            SaveManager manager = CreateManager(_asyncStorage, CreateConfig());
+
+            manager.Save(Key, new TestSaveData { level = 1 });
+            manager.Flush();
+            Assert.AreEqual(1, _asyncStorage.SaveAsyncCount);
+
+            manager.Save(Key, new TestSaveData { level = 2 });
+            manager.Flush();
+            Assert.AreEqual(1, _asyncStorage.SaveAsyncCount, "A normal flush waits for the running write.");
+            Assert.IsTrue(manager.HasPendingChanges);
+
+            manager.OnPageHidden();
+
+            Assert.AreEqual(2, _asyncStorage.SaveAsyncCount, "The page may close before a later flush.");
+            Assert.AreEqual(2, JsonUtility.FromJson<TestSaveData>(_asyncStorage.SavedData[1]).level);
+            Assert.IsTrue(manager.HasPendingChanges, "The key is written once more after its writes end.");
+            Assert.IsTrue(manager.IsFlushScheduled, "That last write must be scheduled.");
+        }
+
         // ---------- Versioning ----------
 
         [Test]
@@ -467,6 +508,116 @@ namespace _Core.Tests
             Assert.IsTrue(cache.HasPendingChanges);
         }
 
+        [Test]
+        public void SaveCache_FlushIncludingKeysInFlight_WritesTheNewestValueAtOnceAndKeepsItPending()
+        {
+            _asyncStorage = new FakeAsyncSaveStorage();
+            var cache = new SaveCache(_asyncStorage);
+
+            cache.Set(Key, "first");
+            cache.Flush();
+            Assert.AreEqual(1, _asyncStorage.SaveAsyncCount);
+
+            cache.Set(Key, "second");
+            cache.Flush();
+            Assert.AreEqual(1, _asyncStorage.SaveAsyncCount);
+            Assert.IsTrue(cache.HasPendingChanges);
+
+            cache.Flush(true);
+
+            Assert.AreEqual(2, _asyncStorage.SaveAsyncCount);
+            Assert.AreEqual("second", _asyncStorage.SavedData[1]);
+            Assert.AreEqual(2, _asyncStorage.PendingWriteCount);
+            Assert.IsTrue(cache.HasWritesInFlight);
+            Assert.IsTrue(cache.HasPendingChanges, "The key must be written once more after both writes end.");
+        }
+
+        [Test]
+        public void SaveCache_AfterAPageHideWrite_WritesTheKeyOnceMoreWhenItsWritesEnd()
+        {
+            SaveCache cache = CreateCacheWithOverlappingWrites();
+
+            // The newer write lands first.
+            _asyncStorage.CompleteWrite(1);
+            Assert.AreEqual("second", _asyncStorage.Values[Key]);
+            Assert.IsTrue(cache.HasWritesInFlight, "The older write is still running.");
+
+            cache.Flush();
+            Assert.AreEqual(2, _asyncStorage.SaveAsyncCount, "No write while an earlier one still runs.");
+
+            // The older write lands last and leaves the older value in storage.
+            _asyncStorage.CompleteWrite(0);
+            Assert.AreEqual("first", _asyncStorage.Values[Key]);
+            Assert.IsFalse(cache.HasWritesInFlight);
+            Assert.IsTrue(cache.HasPendingChanges);
+
+            cache.Flush();
+
+            Assert.AreEqual(3, _asyncStorage.SaveAsyncCount);
+            Assert.AreEqual("second", _asyncStorage.SavedData[2]);
+            Assert.IsFalse(cache.HasPendingChanges);
+
+            _asyncStorage.CompleteWrite(0);
+            Assert.AreEqual("second", _asyncStorage.Values[Key], "The newest value must land last.");
+        }
+
+        [Test]
+        public void SaveCache_OlderWriteFailingAfterAPageHideWrite_IsRetriedWithTheNewestValue()
+        {
+            SaveCache cache = CreateCacheWithOverlappingWrites();
+            int failures = 0;
+            cache.WriteFailed += _ => failures++;
+
+            LogAssert.Expect(LogType.Error, new Regex($"SaveCache: failed to write '{Key}'"));
+            LogAssert.Expect(LogType.Exception, new Regex("FakeAsyncSaveStorage write failed"));
+            _asyncStorage.FailWrite(0);
+
+            Assert.AreEqual(1, failures);
+            Assert.IsTrue(cache.HasPendingChanges);
+            Assert.IsTrue(cache.HasWritesInFlight, "The newer write is still running.");
+
+            cache.Flush();
+            Assert.AreEqual(2, _asyncStorage.SaveAsyncCount);
+
+            _asyncStorage.CompleteWrite(0);
+            Assert.IsFalse(cache.HasWritesInFlight);
+
+            cache.Flush();
+
+            Assert.AreEqual(3, _asyncStorage.SaveAsyncCount);
+            Assert.AreEqual("second", _asyncStorage.SavedData[2]);
+        }
+
+        [Test]
+        public void SaveCache_FlushIncludingKeysInFlight_NeverWritesAKeyBeingReadAgain()
+        {
+            _asyncStorage = new FakeAsyncSaveStorage { ThrowOnLoad = true };
+            var cache = new SaveCache(_asyncStorage);
+
+            LogAssert.Expect(LogType.Error, new Regex($"SaveCache: failed to preload '{Key}'"));
+            LogAssert.Expect(LogType.Exception, new Regex("FakeAsyncSaveStorage load failed"));
+            Assert.IsTrue(cache.PreloadAsync(new[] { Key }).IsCompleted);
+
+            _asyncStorage.ThrowOnLoad = false;
+            _asyncStorage.HoldLoads = true;
+            cache.Set(Key, "mine");
+            cache.Flush();
+
+            Assert.IsTrue(cache.HasWritesInFlight, "The key is read again before it is written.");
+            Assert.AreEqual(0, _asyncStorage.SaveAsyncCount);
+
+            cache.Flush(true);
+            Assert.AreEqual(0, _asyncStorage.SaveAsyncCount, "A key being read again must not be written early.");
+
+            // Nothing is stored, so the change is written.
+            _asyncStorage.HoldLoads = false;
+            _asyncStorage.CompleteLoads();
+
+            Assert.AreEqual(1, _asyncStorage.SaveAsyncCount);
+            Assert.AreEqual("mine", _asyncStorage.SavedData[0]);
+            Assert.IsFalse(cache.HasPendingChanges);
+        }
+
         // ---------- Helpers ----------
 
         private static void ExpectReadFailure()
@@ -475,11 +626,27 @@ namespace _Core.Tests
             LogAssert.Expect(LogType.Exception, new Regex("FakeSaveStorage read failed"));
         }
 
-        private SaveManager CreateManager(FakeSaveStorage storage, SaveConfig config)
+        private SaveManager CreateManager(ISaveStorage storage, SaveConfig config)
         {
             SaveManager manager = CreateUninitializedManager();
             manager.Init(storage, config);
             return manager;
+        }
+
+        // A cache over a new async fake whose key has two writes running: "first" from a normal flush, then "second"
+        // from a page-hide flush made while the first was still running.
+        private SaveCache CreateCacheWithOverlappingWrites()
+        {
+            _asyncStorage = new FakeAsyncSaveStorage();
+            var cache = new SaveCache(_asyncStorage);
+
+            cache.Set(Key, "first");
+            cache.Flush();
+            cache.Set(Key, "second");
+            cache.Flush(true);
+
+            Assert.AreEqual(2, _asyncStorage.PendingWriteCount);
+            return cache;
         }
 
         private SaveManager CreateUninitializedManager()

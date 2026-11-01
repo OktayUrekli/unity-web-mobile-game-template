@@ -10,8 +10,10 @@ namespace _Core.Save
     /// <summary>
     /// In-memory layer over an <see cref="ISaveStorage"/>.
     /// Reads are served from memory (a key is read from storage once), writes only
-    /// mark keys dirty until <see cref="Flush"/> pushes them to storage. Storages that
-    /// also implement <see cref="IAsyncSaveStorage"/> are written asynchronously.
+    /// mark keys dirty until <see cref="Flush()"/> pushes them to storage. Storages that
+    /// also implement <see cref="IAsyncSaveStorage"/> are written asynchronously, one write per key at a time; when
+    /// a WebGL page is hidden or closed, <see cref="Flush(bool)"/> also writes keys whose earlier asynchronous write
+    /// is still running, and keeps them dirty for one more write.
     /// A key whose storage read failed is never written blindly: it is read again first, and data stored there
     /// that this session never saw wins over the change.
     /// </summary>
@@ -24,8 +26,15 @@ namespace _Core.Save
         private readonly Dictionary<string, string> _values = new();
         private readonly Dictionary<string, int> _sizes = new();
         private readonly HashSet<string> _dirty = new();
-        private readonly HashSet<string> _inFlight = new();
         private readonly List<string> _flushBuffer = new();
+
+        // Running asynchronous writes per key. A key has two only after a page-hide flush wrote it while its earlier
+        // write was still running.
+        private readonly Dictionary<string, int> _writesInFlight = new();
+
+        // Keys read again before a held-back write (see RereadThenWriteAsync). They are never written while that read
+        // runs, not even by a page-hide flush.
+        private readonly HashSet<string> _rereading = new();
 
         // Keys whose storage read failed: what is stored there is unknown, so a change to them is written only
         // after a read succeeds (see RereadThenWriteAsync).
@@ -42,20 +51,21 @@ namespace _Core.Save
 
         /// <summary>
         /// Raised with the key when writing it to storage failed, or was held back because the key still cannot be
-        /// read. The key stays dirty, so the next <see cref="Flush"/> retries it; <see cref="SaveManager"/>
+        /// read. The key stays dirty, so the next <see cref="Flush()"/> retries it; <see cref="SaveManager"/>
         /// schedules that retry.
         /// </summary>
         public event Action<string> WriteFailed;
 
         /// <summary>
-        /// True while some changes have not been written to storage yet.
+        /// True while some changes have not been written to storage yet. A key that a page-hide flush wrote while an
+        /// earlier write of it was still running stays pending until it is written once more.
         /// </summary>
         public bool HasPendingChanges => _dirty.Count > 0;
 
         /// <summary>
-        /// True while asynchronous writes are still running.
+        /// True while asynchronous writes, or reads that come before a held-back write, are still running.
         /// </summary>
-        public bool HasWritesInFlight => _inFlight.Count > 0;
+        public bool HasWritesInFlight => _writesInFlight.Count > 0 || _rereading.Count > 0;
 
         /// <summary>
         /// Approximate UTF-8 size in bytes of all keys and values known to the cache.
@@ -152,8 +162,22 @@ namespace _Core.Save
         /// Writes every dirty key to storage. Keys whose asynchronous write is still
         /// running stay dirty; failed writes stay dirty and are retried on the next flush.
         /// A key whose read failed is read again before it is written.
+        /// <see cref="Flush(bool)"/> is the variant for a page that is hidden or closing.
         /// </summary>
         public void Flush()
+        {
+            Flush(false);
+        }
+
+        /// <summary>
+        /// Writes every dirty key to storage. A key whose asynchronous write is still running stays dirty for a later
+        /// flush. With <paramref name="includeKeysInFlight"/>, which <see cref="SaveManager"/> passes only when a WebGL
+        /// page is hidden or closed, its newest value is also written at once, and the key still stays dirty until a
+        /// later flush writes it after its writes have ended. Failed writes stay dirty and are retried on the next
+        /// flush. A key whose read failed is read again before it is written, and is never written while that read
+        /// runs.
+        /// </summary>
+        public void Flush(bool includeKeysInFlight)
         {
             if (_dirty.Count == 0)
                 return;
@@ -163,13 +187,27 @@ namespace _Core.Save
 
             foreach (string key in _flushBuffer)
             {
-                if (_inFlight.Contains(key))
+                // Being read again (RereadThenWriteAsync): written, or dropped, once that read ends.
+                if (_rereading.Contains(key))
                     continue;
 
                 _values.TryGetValue(key, out string value);
 
                 // Never write over data that could not be read; a delete is written as asked.
-                if (value != null && _unreadable.Contains(key))
+                bool unreadable = value != null && _unreadable.Contains(key);
+
+                if (_writesInFlight.ContainsKey(key))
+                {
+                    // The page is hidden or closing, so a later flush may never run: the newest value goes out now.
+                    // The key stays dirty, so once its writes end a normal flush writes it once more, and the newest
+                    // value lands last even if the storage applies the earlier request after this one.
+                    if (includeKeysInFlight && !unreadable)
+                        _ = WriteAsync(key, value);
+
+                    continue;
+                }
+
+                if (unreadable)
                 {
                     _ = RereadThenWriteAsync(key);
                     continue;
@@ -194,7 +232,7 @@ namespace _Core.Save
         {
             string stored = null;
             bool readSucceeded;
-            _inFlight.Add(key);
+            _rereading.Add(key);
 
             try
             {
@@ -216,7 +254,7 @@ namespace _Core.Save
             }
             finally
             {
-                _inFlight.Remove(key);
+                _rereading.Remove(key);
             }
 
             if (!readSucceeded)
@@ -267,7 +305,8 @@ namespace _Core.Save
 
         private async Task WriteAsync(string key, string value)
         {
-            _inFlight.Add(key);
+            _writesInFlight.TryGetValue(key, out int running);
+            _writesInFlight[key] = running + 1;
             bool failed = false;
 
             try
@@ -286,7 +325,11 @@ namespace _Core.Save
             }
             finally
             {
-                _inFlight.Remove(key);
+                // The key counts as in flight until its last write ends.
+                if (_writesInFlight.TryGetValue(key, out running) && running > 1)
+                    _writesInFlight[key] = running - 1;
+                else
+                    _writesInFlight.Remove(key);
             }
 
             if (failed)

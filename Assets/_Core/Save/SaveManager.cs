@@ -194,14 +194,21 @@ namespace _Core.Save
         /// </summary>
         public void Flush()
         {
+            FlushNow(false);
+        }
+
+        // includeKeysInFlight: also write keys whose asynchronous write is still running (page hidden or closing).
+        private void FlushNow(bool includeKeysInFlight)
+        {
             if (_cache == null)
                 return;
 
             _flushScheduled = false;
             _retryScheduled = false;
-            _cache.Flush();
+            _cache.Flush(includeKeysInFlight);
 
-            // Keys whose async write is still running stay dirty; try again shortly.
+            // Keys whose async write is still running stay dirty; try again shortly. After a page hide, this is the
+            // flush that writes such a key once more, after its writes have ended.
             if (_cache.HasPendingChanges && _cache.HasWritesInFlight)
                 ScheduleFlushAt(Time.unscaledTime + Mathf.Max(_saveConfig.FlushDelaySeconds, 0.1f));
 
@@ -265,12 +272,15 @@ namespace _Core.Save
         }
 
         /// <summary>
-        /// Called by SaveManager.jslib through SendMessage when the WebGL page is hidden or unloaded.
+        /// Called by SaveManager.jslib through SendMessage when the WebGL page is hidden or unloaded. Writes every
+        /// pending change at once, including keys whose earlier asynchronous write is still running, because the page
+        /// may close before a later flush. Those keys stay pending, so a later flush writes them once more after their
+        /// writes end. Internal for EditMode tests.
         /// </summary>
         [Preserve]
-        private void OnPageHidden()
+        internal void OnPageHidden()
         {
-            Flush();
+            FlushNow(true);
         }
 
         protected override void OnDestroy()
