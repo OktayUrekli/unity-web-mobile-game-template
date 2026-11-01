@@ -165,8 +165,8 @@ var YandexGamesBridge = {
         sdk.on('game_api_resume', function () {
           YandexGames.send('OnGameResumed', '');
 
-          // If the game reported gameplay as stopped (for example the pause menu opened during the pause), undo
-          // the SDK's automatic start once its own handler has run.
+          // If the game reported gameplay as stopped (for example a menu pause it held through the platform pause),
+          // undo the SDK's automatic start once its own handler has run.
           setTimeout(function () {
             var api = YandexGames.gameplayApi();
             if (!YandexGames.gameplayRunning && api && typeof api.stop === 'function') {

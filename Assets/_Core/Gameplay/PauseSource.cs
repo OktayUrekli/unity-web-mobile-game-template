@@ -22,7 +22,8 @@ namespace _Core.Gameplay
 
         /// <summary>
         /// The app is in the background or unfocused, or the platform asks the game to pause. Driven by
-        /// <see cref="PauseManager"/> itself from <c>ApplicationPauseChangedEvent</c>.
+        /// <see cref="PauseManager"/> itself from <c>ApplicationPauseChangedEvent</c>. A platform with
+        /// <c>IGameService.HandlesFocusLoss</c> (CrazyGames) is told nothing while it holds.
         /// </summary>
         public static readonly PauseSource Application = new("Application", persistsAcrossScenes: true);
 
@@ -37,7 +38,8 @@ namespace _Core.Gameplay
         /// <param name="name">Shown in the pause logs of the Editor and development builds.</param>
         /// <param name="persistsAcrossScenes">False releases this source when the active scene changes.</param>
         /// <param name="stopsPlatformGameplay">
-        /// True reports gameplay as stopped to the platform (CrazyGames <c>gameplayStop</c>) while this source pauses.
+        /// True counts a pause by this source as stopped gameplay for <c>GameplayStateManager</c>, which tells the
+        /// platform (CrazyGames <c>gameplayStop</c>) as its summary describes.
         /// </param>
         public PauseSource(string name, bool persistsAcrossScenes = false, bool stopsPlatformGameplay = true)
         {
@@ -57,7 +59,7 @@ namespace _Core.Gameplay
         public bool PersistsAcrossScenes { get; }
 
         /// <summary>
-        /// True when gameplay is reported to the platform as stopped while this source pauses.
+        /// True when a pause by this source counts as stopped gameplay (<c>GameplayStateManager.IsPlaying</c> false).
         /// </summary>
         public bool StopsPlatformGameplay { get; }
 

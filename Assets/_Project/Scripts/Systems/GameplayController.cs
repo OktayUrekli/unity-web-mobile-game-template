@@ -46,6 +46,9 @@ namespace _Project.Systems
 
         private bool _isLeaving;
 
+        // The app went away during a running round: the pause menu is shown once the player is back.
+        private bool _isPauseMenuOwed;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {
@@ -233,9 +236,30 @@ namespace _Project.Systems
 
         private void OnApplicationPauseChanged(ApplicationPauseChangedEvent gameEvent)
         {
-            // Backgrounded app or hidden tab: open the pause menu, so the player resumes it on return.
+            // Backgrounded app, hidden tab or platform pause: the round holds the menu pause now and the pause menu is
+            // shown once the player is back, so they resume the round themselves. Shown now, the menu could take the
+            // click that brings the focus back to a web game. Holding the pause now keeps the round paused when
+            // PauseManager releases the app pause, before this handler runs.
             if (gameEvent.IsPaused)
-                Pause();
+            {
+                if (IsRunning && !_isLeaving && !UIManager.Instance.IsPopupOpen<PausePopup>())
+                {
+                    _isPauseMenuOwed = true;
+                    PauseManager.Instance.Pause(PauseSource.Menu);
+                }
+
+                return;
+            }
+
+            if (!_isPauseMenuOwed)
+                return;
+
+            _isPauseMenuOwed = false;
+            Pause();
+
+            // The popup holds the menu pause from now on; without it nothing would release the pause.
+            if (!UIManager.Instance.IsPopupOpen<PausePopup>())
+                PauseManager.Instance.Resume(PauseSource.Menu);
         }
     }
 }

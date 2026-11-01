@@ -20,7 +20,7 @@ One session owner per gameplay scene runs the loop: HUD, pause and game over, sa
 
 The mechanics are in `core-systems`. On the game side:
 
-- The `PausePopup` holds `PauseSource.Menu` while open; open it from a HUD button, `UIBackRequestedEvent` or `ApplicationPauseChangedEvent`, never from `PauseStateChangedEvent` or `GameplayPauseHandler.Pause()`: ads and scene transitions pause the game too.
+- The `PausePopup` holds `PauseSource.Menu` while open; open it from a HUD button, `UIBackRequestedEvent` or `ApplicationPauseChangedEvent`, never from `PauseStateChangedEvent` or `GameplayPauseHandler.Pause()`: ads and scene transitions pause the game too. For `ApplicationPauseChangedEvent`, hold `PauseSource.Menu` when the app leaves and show the popup once it is back, as the sample `GameplayController` does (the event's summary says why).
 - Tutorials and cutscenes use their own `PauseSource`. Slow motion uses `PauseManager.Instance.TimeScale`.
 - Scaled time stops by itself. Systems on unscaled time derive from `GameplayPauseHandler`; for many pooled objects, pause them from their owner.
 - Input callbacks keep firing while paused: gate them on `PauseManager.Instance.IsPaused`.

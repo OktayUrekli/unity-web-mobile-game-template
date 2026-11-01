@@ -9,6 +9,8 @@ namespace _Core.Platform.Services.Game.Null
 
         public bool IsPausedByPlatform => false;
 
+        public bool HandlesFocusLoss => false;
+
         public string Language => null;
 
         public void GameplayStart()

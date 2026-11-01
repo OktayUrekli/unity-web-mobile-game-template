@@ -15,7 +15,8 @@ namespace _Core.Tests
     /// <summary>
     /// EditMode tests for <see cref="PauseManager"/> and how <see cref="GameplayStateManager"/> follows it. Awake does
     /// not run in Edit Mode, so the managers are registered with <c>Singleton.SetInstanceForTests</c>;
-    /// PlatformManager.Instance is cleared so no platform is called. The time scale is restored in TearDown.
+    /// PlatformManager.Instance is cleared so no platform is called, except where a test registers a
+    /// <see cref="FakeGameService"/>. The time scale is restored in TearDown.
     /// </summary>
     public class PauseManagerTests
     {
@@ -148,6 +149,88 @@ namespace _Core.Tests
             Assert.IsFalse(_pauseManager.IsPaused);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ApplicationPause_StopsGameplay_ButAPlatformThatHandlesFocusLossIsNotTold(bool handlesFocusLoss)
+        {
+            FakeGameService game = UsePlatform(handlesFocusLoss);
+            _gameplayStateManager.BeginGameplay();
+
+            EventBus.Publish(new ApplicationPauseChangedEvent(true));
+            Assert.IsFalse(_gameplayStateManager.IsPlaying);
+            EventBus.Publish(new ApplicationPauseChangedEvent(false));
+
+            CollectionAssert.AreEqual(new[] { true, false, true }, _gameplayEvents);
+            CollectionAssert.AreEqual(handlesFocusLoss ? new[] { "Start" } : new[] { "Start", "Stop", "Start" },
+                game.Calls);
+        }
+
+        [Test]
+        public void PauseMenuHeldWhileTheAppIsAway_ReachesAPlatformThatHandlesFocusLoss_OnceTheAppIsBack()
+        {
+            FakeGameService game = UsePlatform(handlesFocusLoss: true);
+            _gameplayStateManager.BeginGameplay();
+
+            EventBus.Publish(new ApplicationPauseChangedEvent(true));
+            _pauseManager.Pause(PauseSource.Menu);
+            CollectionAssert.AreEqual(new[] { "Start" }, game.Calls, "Nothing reaches the platform while the app is away.");
+
+            EventBus.Publish(new ApplicationPauseChangedEvent(false));
+            CollectionAssert.AreEqual(new[] { "Start", "Stop" }, game.Calls);
+
+            _pauseManager.Resume(PauseSource.Menu);
+            CollectionAssert.AreEqual(new[] { "Start", "Stop", "Start" }, game.Calls);
+        }
+
+        [Test]
+        public void GameplayThatStartsOrEndsWhileTheAppIsAway_ReachesAPlatformThatHandlesFocusLoss_OnceTheAppIsBack()
+        {
+            FakeGameService game = UsePlatform(handlesFocusLoss: true);
+
+            // A level that loaded behind a hidden tab.
+            EventBus.Publish(new ApplicationPauseChangedEvent(true));
+            _gameplayStateManager.BeginGameplay();
+            CollectionAssert.IsEmpty(game.Calls);
+            EventBus.Publish(new ApplicationPauseChangedEvent(false));
+            CollectionAssert.AreEqual(new[] { "Start" }, game.Calls);
+
+            EventBus.Publish(new ApplicationPauseChangedEvent(true));
+            _gameplayStateManager.EndGameplay();
+            CollectionAssert.AreEqual(new[] { "Start" }, game.Calls);
+            EventBus.Publish(new ApplicationPauseChangedEvent(false));
+            CollectionAssert.AreEqual(new[] { "Start", "Stop" }, game.Calls);
+
+            // Ended and started again before the app is back: nothing changed for the platform.
+            _gameplayStateManager.BeginGameplay();
+            EventBus.Publish(new ApplicationPauseChangedEvent(true));
+            _gameplayStateManager.EndGameplay();
+            _gameplayStateManager.BeginGameplay();
+            EventBus.Publish(new ApplicationPauseChangedEvent(false));
+            CollectionAssert.AreEqual(new[] { "Start", "Stop", "Start" }, game.Calls);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void RoundPausedOnTheWayOut_WithItsMenuShownOnReturn_StaysPausedAcrossTheReturn(bool handlesFocusLoss)
+        {
+            // What the sample GameplayController does. It subscribes after PauseManager, so PauseManager has released
+            // the app pause by the time the round shows its menu; the menu pause held since the way out bridges that.
+            FakeGameService game = UsePlatform(handlesFocusLoss);
+            EventBus.Subscribe<ApplicationPauseChangedEvent>(PauseRoundOnTheWayOut);
+            _gameplayStateManager.BeginGameplay();
+            _pauseEvents.Clear();
+
+            EventBus.Publish(new ApplicationPauseChangedEvent(true));
+            CollectionAssert.AreEqual(handlesFocusLoss ? new[] { "Start" } : new[] { "Start", "Stop" }, game.Calls);
+
+            EventBus.Publish(new ApplicationPauseChangedEvent(false));
+            Assert.IsTrue(_pauseManager.IsPausedBy(PauseSource.Menu));
+            Assert.AreEqual(0f, Time.timeScale);
+            CollectionAssert.DoesNotContain(_pauseEvents, false, "The round never runs between the way out and its menu.");
+            CollectionAssert.AreEqual(new[] { "Start", "Stop" }, game.Calls);
+            CollectionAssert.AreEqual(new[] { true, false }, _gameplayEvents);
+        }
+
         [Test]
         public void SceneChange_ReleasesSceneSources_AndKeepsPersistentOnes()
         {
@@ -270,6 +353,24 @@ namespace _Core.Tests
                 handler.Disable();
                 Object.DestroyImmediate(handlerObject);
             }
+        }
+
+        // Registers a platform whose game service records the gameplay calls.
+        private FakeGameService UsePlatform(bool handlesFocusLoss)
+        {
+            var game = new FakeGameService { HandlesFocusLoss = handlesFocusLoss };
+            PlatformManager platform = _gameObject.AddComponent<PlatformManager>();
+            platform.SetGameService(game);
+            PlatformManager.SetInstanceForTests(platform);
+            return game;
+        }
+
+        // The sample's flow: a running round holds the menu pause on the way out. Once the app is back it shows its
+        // menu, which holds the same source again and so changes nothing.
+        private void PauseRoundOnTheWayOut(ApplicationPauseChangedEvent gameEvent)
+        {
+            if (_gameplayStateManager.IsGameplayActive)
+                _pauseManager.Pause(PauseSource.Menu);
         }
 
         private void PauseAgainOnResume(PauseStateChangedEvent gameEvent)

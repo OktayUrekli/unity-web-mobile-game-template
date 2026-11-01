@@ -29,6 +29,10 @@ namespace _Platforms.YandexGames.Services
 
         public bool IsPausedByPlatform => _isPausedByPlatform;
 
+        // Yandex stops GameplayAPI itself only around its own pause requests. The game freezes on any focus loss of
+        // its iframe, so it reports its app pauses and GameplayAPI follows the frozen game.
+        public bool HandlesFocusLoss => false;
+
         /// <summary>
         /// The Yandex Games interface language (ISO 639-1, for example "ru" or "tr"). Yandex requires the game to
         /// start in it (requirement 2.14); <c>LocalizationManager</c> does when the player has not picked a language.

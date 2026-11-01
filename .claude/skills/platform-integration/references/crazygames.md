@@ -48,7 +48,7 @@ Analytics, Achievement, Review, Share, Purchase and Privacy → Null services. C
 
 ## Game lifecycle
 
-Game code never calls `GameplayStart/Stop`; `GameplayStateManager` keeps them paired and ends gameplay on scene change. The pause menu, app pauses and scene transitions (until the new scene is visible) are reported as gameplay stop automatically. Ads need no calls. Use `HappyTime()` for rare celebrations (level done, new best).
+Game code never calls `GameplayStart/Stop`; `GameplayStateManager` keeps them paired and ends gameplay on scene change. The pause menu and scene transitions (until the new scene is visible) are reported as gameplay stop automatically. Ads need no calls. Focus loss and hidden tabs are never reported: docs.crazygames.com/sdk/game asks games not to call `gameplayStop` for them, so `CrazyGamesGameService.HandlesFocusLoss` is true (`core-systems`). Use `HappyTime()` for rare celebrations (level done, new best).
 
 ## Ads and banners
 

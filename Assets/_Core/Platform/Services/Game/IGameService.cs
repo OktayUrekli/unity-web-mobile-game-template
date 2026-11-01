@@ -21,6 +21,13 @@ namespace _Core.Platform.Services.Game
         bool IsPausedByPlatform { get; }
 
         /// <summary>
+        /// True when the platform tracks focus loss and hidden tabs itself and asks games not to report them as
+        /// gameplay stops (CrazyGames). <c>GameplayStateManager</c> then tells it nothing while the app is away and
+        /// reports the state once the app is back.
+        /// </summary>
+        bool HandlesFocusLoss { get; }
+
+        /// <summary>
         /// Language the platform shows the game in (for example "ru" or "en-US"), or null when the platform
         /// does not tell. <c>LocalizationManager</c> uses it at start when the player has not picked a language.
         /// </summary>

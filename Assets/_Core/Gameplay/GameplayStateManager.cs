@@ -2,6 +2,7 @@ using _Core.Events;
 using _Core.Events.Gameplay;
 using _Core.Managers;
 using _Core.Platform.Core;
+using _Core.Platform.Services.Game;
 using UnityEngine.SceneManagement;
 
 namespace _Core.Gameplay
@@ -12,12 +13,16 @@ namespace _Core.Gameplay
     /// Call <see cref="BeginGameplay"/> when a level or round starts and <see cref="EndGameplay"/> at game over and
     /// before leaving the level. Pauses need no calls: while <see cref="PauseManager"/> is paused by a source that
     /// stops platform gameplay (a menu, a scene transition, the app in the background), gameplay is reported as stopped
-    /// and it is reported as started again on resume. Ads are left to the platform SDK. Changing the active scene ends
-    /// gameplay.
+    /// and it is reported as started again on resume. Ads are left to the platform SDK. A platform that handles focus
+    /// loss itself (<see cref="IGameService.HandlesFocusLoss"/>, CrazyGames) is told nothing while the app is away and
+    /// hears the current state once the app is back. Changing the active scene ends gameplay.
     /// </summary>
     public class GameplayStateManager : Singleton<GameplayStateManager>
     {
+        // What GameplayStateChangedEvent and the platform were last told; they differ only while the platform hears
+        // nothing because the app is away.
         private bool _isReportedPlaying;
+        private bool _isPlatformPlaying;
 
         /// <summary>
         /// True between <see cref="BeginGameplay"/> and <see cref="EndGameplay"/>, paused or not.
@@ -26,7 +31,8 @@ namespace _Core.Gameplay
 
         /// <summary>
         /// True while gameplay is active and not paused by a menu, a scene transition or the app going to the
-        /// background: what the platform is told and what <see cref="GameplayStateChangedEvent"/> reports.
+        /// background: what <see cref="GameplayStateChangedEvent"/> reports and what the platform is told, except
+        /// while the app is away on a platform that handles focus loss itself.
         /// </summary>
         public bool IsPlaying => IsGameplayActive && !IsHaltedByPause();
 
@@ -90,25 +96,42 @@ namespace _Core.Gameplay
             return pauseManager != null && pauseManager.StopsPlatformGameplay;
         }
 
+        private static bool IsAppAway()
+        {
+            PauseManager pauseManager = PauseManager.Instance;
+            return pauseManager != null && pauseManager.IsPausedBy(PauseSource.Application);
+        }
+
         // Tells the platform and listeners when the effective state changes, never twice in a row.
         private void Report()
         {
             bool playing = IsPlaying;
+            ReportToPlatform(playing);
+
             if (playing == _isReportedPlaying)
                 return;
 
             _isReportedPlaying = playing;
+            EventBus.Publish(new GameplayStateChangedEvent(playing));
+        }
+
+        // A platform that handles focus loss itself hears nothing while the app is away. Releasing
+        // PauseSource.Application publishes PauseStateChangedEvent, which tells it the state then.
+        private void ReportToPlatform(bool playing)
+        {
+            if (playing == _isPlatformPlaying)
+                return;
 
             PlatformManager platform = PlatformManager.Instance;
-            if (platform != null && platform.Game != null)
-            {
-                if (playing)
-                    platform.Game.GameplayStart();
-                else
-                    platform.Game.GameplayStop();
-            }
+            IGameService game = platform != null ? platform.Game : null;
+            if (game == null || (game.HandlesFocusLoss && IsAppAway()))
+                return;
 
-            EventBus.Publish(new GameplayStateChangedEvent(playing));
+            _isPlatformPlaying = playing;
+            if (playing)
+                game.GameplayStart();
+            else
+                game.GameplayStop();
         }
     }
 }

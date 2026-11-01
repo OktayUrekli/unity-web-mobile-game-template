@@ -24,6 +24,10 @@ namespace _Platforms.CrazyGames.Services
         // CrazyGames has no pause request; the portal mutes the game through muteAudio instead.
         public bool IsPausedByPlatform => false;
 
+        // docs.crazygames.com/sdk/game on gameplayStop: "Don't call this event when the user switches focus or leaves
+        // the game area (we handle this on our side)."
+        public bool HandlesFocusLoss => true;
+
         /// <summary>
         /// The browser locale CrazyGames reports (for example "en-US"), read once. Null in the Editor, where the
         /// SDK returns a fixed demo value.
