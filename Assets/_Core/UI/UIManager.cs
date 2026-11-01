@@ -6,6 +6,7 @@ using _Core.Events.Scenes;
 using _Core.Events.UI;
 using _Core.Managers;
 using _Core.Platform.Core;
+using _Core.SceneManagement;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -83,8 +84,8 @@ namespace _Core.UI
             if (keyboard == null || !keyboard.escapeKey.wasPressedThisFrame)
                 return;
 
-            // Back is not handled while a scene loads (see _isSceneLoading).
-            if (_isSceneLoading)
+            // Back is not handled while a scene loads (see _isSceneLoading) or a scene transition covers the screen.
+            if (_isSceneLoading || IsSceneTransitionRunning())
                 return;
 
             // The ad blocker overlay doesn't cover Back; ignore it while an ad request runs.
@@ -101,6 +102,14 @@ namespace _Core.UI
             }
 
             EventBus.Publish(new UIBackRequestedEvent());
+        }
+
+        // A transition blocks pointer input from its fade-out to the end of its fade-in; Back follows, so no popup
+        // opens behind the fade.
+        private static bool IsSceneTransitionRunning()
+        {
+            SceneTransition transition = SceneTransition.Instance;
+            return transition != null && transition.IsTransitioning;
         }
 
         /// <summary>

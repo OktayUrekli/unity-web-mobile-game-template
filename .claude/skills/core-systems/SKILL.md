@@ -35,7 +35,7 @@ Static, one channel per event type, no allocation per publish. Events are `reado
 
 ## Pause and gameplay state
 
-- `PauseManager` is the only owner of `Time.timeScale`. The game is paused while any `PauseSource` holds a pause: `Menu` (game code; released when the scene changes), `Ad` (whole ad request, automatic), `Application` (background, focus loss or a platform pause request, automatic), or a game's own `new PauseSource("Tutorial")`. Any other write to `Time.timeScale` is undone in `LateUpdate` with a one-time warning. Each change publishes `PauseStateChangedEvent`.
+- `PauseManager` is the only owner of `Time.timeScale`. The game is paused while any `PauseSource` holds a pause: `Menu` (game code; released when the scene changes), `SceneTransition` (a whole scene transition, from fade-out to fade-in, automatic), `Ad` (whole ad request, automatic), `Application` (background, focus loss or a platform pause request, automatic), or a game's own `new PauseSource("Tutorial")`. Any other write to `Time.timeScale` is undone in `LateUpdate` with a one-time warning. Each change publishes `PauseStateChangedEvent`.
 - `GameplayPauseHandler`: base class for systems on unscaled time or that must stop work at pause; `Pause()`/`Resume()` run once per change, and at once when enabled during a pause.
 - `GameplayStateManager.BeginGameplay()/EndGameplay()` mark a level or round. What the platform is told (`IsPlaying`) is the session minus pauses by a source with `StopsPlatformGameplay` (all but `Ad`). It ends the session when the active scene changes, so call `BeginGameplay` from `Start`, not `Awake`.
 - `AppLifecycleManager` publishes `ApplicationPauseChangedEvent` on background or focus loss (not during an ad request or for Editor focus) and while the platform asks for a pause; it also sets the mobile frame rate and keeps the screen awake while playing.
@@ -54,7 +54,7 @@ Static, one channel per event type, no allocation per publish. Events are `reado
 
 - `AudioManager.PlayMusic/StopMusic/PlaySfx(SoundData)`. The mixer in `AudioConfig` must expose `MusicVolume` and `SFXVolume`. Ads and platform mute requests mute it automatically. `PlayMusic` keeps a track that is already playing, so `SceneMusic` never restarts shared music. Buttons click through `ButtonClickSound`, never from handlers.
 - `PoolManager.Get(id, position, rotation, parent)` places the object before activation, then calls `IPoolable.OnSpawn()`. Release exactly once with `Release(obj)`. Everything still out is released when a scene unloads.
-- Player-driven scene changes use `SceneTransition.LoadAsync(name)` (fade, input blocked, a second request ignored); `SceneLoader` loads without the fade. Every load hides all UI. Never hold activation (`allowSceneActivation = false`): Unity then also holds Addressables loads, Localization included, and the WebGL boot can stall.
+- Player-driven scene changes use `SceneTransition.LoadAsync(name)`: fade, pointer input and Back blocked, a second request ignored, and the game paused until the new scene is visible (music keeps playing). `SceneLoader` loads without the fade or the pause. Every load hides all UI. Never hold activation (`allowSceneActivation = false`): Unity then also holds Addressables loads, Localization included, and the WebGL boot can stall.
 
 ## Verify
 

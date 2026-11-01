@@ -165,6 +165,27 @@ namespace _Core.Tests
         }
 
         [Test]
+        public void SceneTransition_KeepsTheGamePaused_WhenTheMenuIsReleasedAndTheSceneChanges()
+        {
+            // Pause popup open, then Main menu: the transition pauses, the load hides the popup (releasing Menu), the
+            // scene changes.
+            _pauseManager.Pause(PauseSource.Menu);
+            _pauseManager.Pause(PauseSource.SceneTransition);
+            _pauseManager.Resume(PauseSource.Menu);
+            _pauseManager.ReleaseSceneSources();
+
+            Assert.IsTrue(_pauseManager.IsPausedBy(PauseSource.SceneTransition),
+                "The scene change does not release the transition's pause.");
+            Assert.AreEqual(0f, Time.timeScale);
+            CollectionAssert.DoesNotContain(_pauseEvents, false,
+                "The game never runs between the menu and the end of the transition.");
+
+            _pauseManager.Resume(PauseSource.SceneTransition);
+            Assert.IsFalse(_pauseManager.IsPaused);
+            Assert.AreEqual(1f, Time.timeScale);
+        }
+
+        [Test]
         public void Gameplay_IsReportedStoppedWhileAMenuPauses_ButNotForAds()
         {
             _gameplayStateManager.BeginGameplay();
@@ -199,6 +220,26 @@ namespace _Core.Tests
 
             _pauseManager.Resume(PauseSource.Menu);
             CollectionAssert.AreEqual(new[] { true }, _gameplayEvents);
+        }
+
+        [Test]
+        public void SceneTransition_ReportsGameplayStopped_UntilTheNewSceneIsVisible()
+        {
+            _gameplayStateManager.BeginGameplay();
+            _pauseManager.Pause(PauseSource.SceneTransition);
+            Assert.IsFalse(_gameplayStateManager.IsPlaying);
+
+            // What activeSceneChanged does (PauseManager first, then GameplayStateManager), then the new level's Start
+            // behind the fade.
+            _pauseManager.ReleaseSceneSources();
+            _gameplayStateManager.EndGameplay();
+            _gameplayStateManager.BeginGameplay();
+            Assert.IsFalse(_gameplayStateManager.IsPlaying);
+
+            _pauseManager.Resume(PauseSource.SceneTransition);
+            Assert.IsTrue(_gameplayStateManager.IsPlaying);
+
+            CollectionAssert.AreEqual(new[] { true, false, true }, _gameplayEvents);
         }
 
         [Test]

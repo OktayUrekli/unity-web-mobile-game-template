@@ -11,7 +11,8 @@ namespace _Core.Gameplay
 {
     /// <summary>
     /// The single owner of <see cref="Time.timeScale"/>. The game is paused while at least one
-    /// <see cref="PauseSource"/> holds a pause: a menu (<see cref="PauseSource.Menu"/>, set by game code), an ad request
+    /// <see cref="PauseSource"/> holds a pause: a menu (<see cref="PauseSource.Menu"/>, set by game code), a scene
+    /// transition (<see cref="PauseSource.SceneTransition"/>, set by <c>SceneTransition</c>), an ad request
     /// (<see cref="PauseSource.Ad"/>) or the app being in the background / the platform asking for a pause
     /// (<see cref="PauseSource.Application"/>); the last two are tracked here automatically. Every change publishes
     /// <see cref="PauseStateChangedEvent"/>; <see cref="GameplayPauseHandler"/> turns it into Pause/Resume calls and

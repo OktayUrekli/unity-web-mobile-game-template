@@ -39,7 +39,7 @@ namespace _Project.Systems
         public bool IsNewBest { get; private set; }
 
         /// <summary>
-        /// True while anything pauses the game (pause menu, ad, app in the background).
+        /// True while anything pauses the game (pause menu, ad, scene transition, app in the background).
         /// </summary>
         public bool IsPaused => PauseManager.Instance != null && PauseManager.Instance.IsPaused;
 

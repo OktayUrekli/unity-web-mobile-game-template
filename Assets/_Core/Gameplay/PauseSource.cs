@@ -2,8 +2,8 @@ namespace _Core.Gameplay
 {
     /// <summary>
     /// Something that can pause the game through <see cref="PauseManager"/>. The game stays paused while at least one
-    /// source holds a pause. The framework defines <see cref="Menu"/>, <see cref="Ad"/> and <see cref="Application"/>;
-    /// a game adds its own (tutorial, cutscene) as <c>static readonly</c> instances.
+    /// source holds a pause. The framework defines <see cref="Menu"/>, <see cref="Ad"/>, <see cref="Application"/> and
+    /// <see cref="SceneTransition"/>; a game adds its own (tutorial, cutscene) as <c>static readonly</c> instances.
     /// </summary>
     public sealed class PauseSource
     {
@@ -25,6 +25,14 @@ namespace _Core.Gameplay
         /// <see cref="PauseManager"/> itself from <c>ApplicationPauseChangedEvent</c>.
         /// </summary>
         public static readonly PauseSource Application = new("Application", persistsAcrossScenes: true);
+
+        /// <summary>
+        /// A scene change through <c>SceneTransition</c>, held from the start of its fade-out until its fade-in ends:
+        /// the old scene stops when the player leaves it and the new one starts once it is visible. It persists across
+        /// the scene change it covers and stops platform gameplay (loading is not play on CrazyGames or Yandex). Driven
+        /// by <c>SceneTransition</c> only; plain <c>SceneLoader</c> loads don't hold it.
+        /// </summary>
+        public static readonly PauseSource SceneTransition = new("SceneTransition", persistsAcrossScenes: true);
 
         /// <param name="name">Shown in the pause logs of the Editor and development builds.</param>
         /// <param name="persistsAcrossScenes">False releases this source when the active scene changes.</param>

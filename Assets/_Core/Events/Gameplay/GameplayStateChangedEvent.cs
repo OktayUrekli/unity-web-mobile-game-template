@@ -8,7 +8,8 @@ namespace _Core.Events.Gameplay
     {
         /// <summary>
         /// Same value as <c>GameplayStateManager.IsPlaying</c>: true from <c>BeginGameplay</c> to <c>EndGameplay</c>,
-        /// except while a pause that stops platform gameplay (a menu, the app in the background) holds.
+        /// except while a pause that stops platform gameplay (a menu, a scene transition, the app in the background)
+        /// holds.
         /// </summary>
         public bool IsActive { get; }
 

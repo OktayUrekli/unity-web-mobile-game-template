@@ -52,7 +52,7 @@ namespace _Core.Gameplay
         }
 
         /// <summary>
-        /// Called when the game pauses (menu, ad, app in the background).
+        /// Called when the game pauses (menu, ad, scene transition, app in the background).
         /// </summary>
         public abstract void Pause();
 

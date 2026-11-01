@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using _Core.Configuration;
+using _Core.Gameplay;
 using _Core.Managers;
 using _Core.UI;
 using DG.Tweening;
@@ -11,9 +12,11 @@ namespace _Core.SceneManagement
 {
     /// <summary>
     /// Changes scenes behind a full-screen fade: the screen fades out, the scene loads asynchronously (the page
-    /// keeps responding on WebGL), then it fades in. Input is blocked for the whole transition and a second request
-    /// while one runs is ignored. Created by the Bootstrapper; look and timing come from <see cref="SceneConfig"/>.
-    /// Use it for every scene change made by the player: <c>_ = SceneTransition.LoadAsync(name)</c>.
+    /// keeps responding on WebGL), then it fades in. The game is paused for the whole transition
+    /// (<see cref="PauseSource.SceneTransition"/>): the old scene stops when the fade-out starts and the new one starts
+    /// once it is visible; music keeps playing. Pointer input and Back are blocked meanwhile, and a second request is
+    /// ignored. Created by the Bootstrapper; look and timing come from <see cref="SceneConfig"/>. Use it for every
+    /// scene change made by the player: <c>_ = SceneTransition.LoadAsync(name)</c>.
     /// </summary>
     public class SceneTransition : Singleton<SceneTransition>
     {
@@ -25,7 +28,8 @@ namespace _Core.SceneManagement
         private float _fadeSeconds = 0.25f;
 
         /// <summary>
-        /// True from the start of the fade-out until the fade-in has finished.
+        /// True from the start of the fade-out until the fade-in has finished, the time
+        /// <see cref="PauseSource.SceneTransition"/> pauses the game.
         /// </summary>
         public bool IsTransitioning { get; private set; }
 
@@ -43,8 +47,9 @@ namespace _Core.SceneManagement
 
         /// <summary>
         /// Fades out, loads <paramref name="sceneName"/> and fades in. Completes when the new scene is visible.
-        /// Ignored (with a warning) while another transition runs. Without a <see cref="SceneTransition"/> (boot failed)
-        /// the scene loads without the fade.
+        /// Ignored (with a warning) while another transition runs: a scene that changes scenes again as soon as it
+        /// starts must wait until <see cref="IsTransitioning"/> is false. Without a <see cref="SceneTransition"/> (boot
+        /// failed) the scene loads without the fade or the pause.
         /// </summary>
         public static Task LoadAsync(string sceneName)
         {
@@ -64,6 +69,7 @@ namespace _Core.SceneManagement
 
             try
             {
+                SetGamePaused(true);
                 await FadeAsync(1f);
                 await SceneLoader.LoadAsync(sceneName);
 
@@ -77,13 +83,39 @@ namespace _Core.SceneManagement
             }
             finally
             {
-                // Destroyed with the app while waiting: nothing left to fade.
-                if (this != null)
+                try
                 {
-                    await FadeAsync(0f);
-                    IsTransitioning = false;
+                    // Also after a failed load, so the screen never stays covered. Destroyed with the app while
+                    // waiting: nothing left to fade.
+                    if (this != null)
+                        await FadeAsync(0f);
                 }
+                catch (Exception exception)
+                {
+                    Debug.LogException(exception);
+                }
+
+                // Always, even after a failure: a flag left set would ignore every later scene change, and a pause left
+                // held would freeze the game. The flag goes first, so code reacting to the resume sees the transition
+                // finished.
+                IsTransitioning = false;
+                SetGamePaused(false);
             }
+        }
+
+        // The game is paused for the whole transition: the old scene stops when the player leaves it, and the new one
+        // runs (and its gameplay reaches the platform) once it is visible. Music keeps playing: AudioManager ignores
+        // pauses.
+        private static void SetGamePaused(bool paused)
+        {
+            PauseManager pauseManager = PauseManager.Instance;
+            if (pauseManager == null)
+                return;
+
+            if (paused)
+                pauseManager.Pause(PauseSource.SceneTransition);
+            else
+                pauseManager.Resume(PauseSource.SceneTransition);
         }
 
         private Task FadeAsync(float alpha)

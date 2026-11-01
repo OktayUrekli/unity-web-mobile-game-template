@@ -4,7 +4,8 @@ using UnityEngine;
 namespace _Project.Testing
 {
     /// <summary>
-    /// Logs the Pause/Resume calls a <see cref="GameplayPauseHandler"/> receives (pause menu, ads, app in the background).
+    /// Logs the Pause/Resume calls a <see cref="GameplayPauseHandler"/> receives (pause menu, ads, scene transitions,
+    /// app in the background).
     /// </summary>
     public class GameplayPauseTest : GameplayPauseHandler
     {

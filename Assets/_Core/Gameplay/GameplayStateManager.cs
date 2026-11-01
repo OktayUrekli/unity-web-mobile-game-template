@@ -11,8 +11,9 @@ namespace _Core.Gameplay
     /// (<c>IGameService.GameplayStart/GameplayStop</c>) exactly once per change.
     /// Call <see cref="BeginGameplay"/> when a level or round starts and <see cref="EndGameplay"/> at game over and
     /// before leaving the level. Pauses need no calls: while <see cref="PauseManager"/> is paused by a source that
-    /// stops platform gameplay (a menu, the app in the background), gameplay is reported as stopped and it is
-    /// reported as started again on resume. Ads are left to the platform SDK. Changing the active scene ends gameplay.
+    /// stops platform gameplay (a menu, a scene transition, the app in the background), gameplay is reported as stopped
+    /// and it is reported as started again on resume. Ads are left to the platform SDK. Changing the active scene ends
+    /// gameplay.
     /// </summary>
     public class GameplayStateManager : Singleton<GameplayStateManager>
     {
@@ -24,8 +25,8 @@ namespace _Core.Gameplay
         public bool IsGameplayActive { get; private set; }
 
         /// <summary>
-        /// True while gameplay is active and not paused by a menu or the app going to the background: what the
-        /// platform is told and what <see cref="GameplayStateChangedEvent"/> reports.
+        /// True while gameplay is active and not paused by a menu, a scene transition or the app going to the
+        /// background: what the platform is told and what <see cref="GameplayStateChangedEvent"/> reports.
         /// </summary>
         public bool IsPlaying => IsGameplayActive && !IsHaltedByPause();
 

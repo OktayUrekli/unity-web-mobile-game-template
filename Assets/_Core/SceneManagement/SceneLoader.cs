@@ -78,8 +78,9 @@ namespace _Core.SceneManagement
 
         /// <summary>
         /// Loads a scene asynchronously, reporting progress (0..1) to <paramref name="onProgress"/> and to
-        /// <see cref="Progress"/>. The scene is shown as soon as it is loaded. Frame-polled, so it works on
-        /// WebGL; it does not need a MonoBehaviour that survives the load.
+        /// <see cref="Progress"/>. The scene is shown as soon as it is loaded. The old scene keeps running until the
+        /// new one replaces it (no fade, no pause); player-driven scene changes use <see cref="SceneTransition"/>.
+        /// Frame-polled, so it works on WebGL; it does not need a MonoBehaviour that survives the load.
         /// </summary>
         public static Task LoadAsync(string sceneName, Action<float> onProgress = null)
         {
