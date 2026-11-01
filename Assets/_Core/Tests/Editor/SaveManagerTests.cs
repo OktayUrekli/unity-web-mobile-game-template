@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 using _Core.Platform.Services.Save;
 using _Core.Save;
 using _Core.Save.Local;
@@ -147,6 +148,7 @@ namespace _Core.Tests
             Assert.IsFalse(found);
             AssertIsFresh(data);
             Assert.IsFalse(manager.HasSave(Key));
+            Assert.IsFalse(manager.IsUnreadable(Key), "A missing save is not a failed read.");
         }
 
         [Test]
@@ -246,8 +248,9 @@ namespace _Core.Tests
             manager.Save(Key, CreateSampleData());
             Assert.IsFalse(manager.HasPendingChanges);
 
-            // Flush before Init is a silent no-op.
+            // Flush before Init is a silent no-op, and nothing is unreadable yet.
             Assert.DoesNotThrow(() => manager.Flush());
+            Assert.IsFalse(manager.IsUnreadable(Key));
         }
 
         [Test]
@@ -393,6 +396,7 @@ namespace _Core.Tests
 
             Assert.IsFalse(found);
             AssertIsFresh(data);
+            Assert.IsTrue(manager.IsUnreadable(Key), "A failed read must be told apart from a missing save.");
         }
 
         [Test]
@@ -423,6 +427,7 @@ namespace _Core.Tests
             Assert.IsFalse(manager.HasPendingChanges);
             Assert.IsTrue(manager.Load(Key, out TestSaveData loaded));
             AssertSameData(stored, loaded);
+            Assert.IsFalse(manager.IsUnreadable(Key));
         }
 
         [Test]
@@ -699,6 +704,62 @@ namespace _Core.Tests
             Assert.AreEqual(1, _asyncStorage.SaveAsyncCount);
             Assert.AreEqual("mine", _asyncStorage.SavedData[0]);
             Assert.IsFalse(cache.HasPendingChanges);
+        }
+
+        [Test]
+        public void SaveCache_AsyncStorage_KeyWhosePreloadFailed_IsReadAgainByTheNextPreload()
+        {
+            _asyncStorage = new FakeAsyncSaveStorage { ThrowOnLoad = true };
+            _asyncStorage.Values[Key] = "stored";
+            var cache = new SaveCache(_asyncStorage);
+
+            LogAssert.Expect(LogType.Error, new Regex($"SaveCache: failed to preload '{Key}'"));
+            LogAssert.Expect(LogType.Exception, new Regex("FakeAsyncSaveStorage load failed"));
+            Assert.IsTrue(cache.PreloadAsync(new[] { Key }).IsCompleted);
+            Assert.IsTrue(cache.IsUnreadable(Key));
+
+            // The storage's synchronous answer (nothing loaded) is returned but not kept.
+            Assert.IsFalse(cache.TryGet(Key, out _));
+            Assert.IsTrue(cache.IsUnreadable(Key));
+
+            _asyncStorage.ThrowOnLoad = false;
+            Assert.IsTrue(cache.PreloadAsync(new[] { Key }).IsCompleted);
+
+            Assert.IsFalse(cache.IsUnreadable(Key));
+            Assert.IsTrue(cache.TryGet(Key, out string value), "The second preload must read the key again.");
+            Assert.AreEqual("stored", value);
+        }
+
+        [Test]
+        public void SaveCache_SetDuringAReadOfAnUnreadableKey_KeepsStoredDataOnFlush()
+        {
+            _asyncStorage = new FakeAsyncSaveStorage { ThrowOnLoad = true };
+            _asyncStorage.Values[Key] = "stored";
+            var cache = new SaveCache(_asyncStorage);
+
+            LogAssert.Expect(LogType.Error, new Regex($"SaveCache: failed to preload '{Key}'"));
+            LogAssert.Expect(LogType.Exception, new Regex("FakeAsyncSaveStorage load failed"));
+            Assert.IsTrue(cache.PreloadAsync(new[] { Key }).IsCompleted);
+
+            _asyncStorage.ThrowOnLoad = false;
+            _asyncStorage.HoldLoads = true;
+            Task preload = cache.PreloadAsync(new[] { Key });
+            cache.Set(Key, "mine");
+
+            _asyncStorage.HoldLoads = false;
+            _asyncStorage.CompleteLoads();
+
+            Assert.IsTrue(preload.IsCompleted);
+            Assert.IsTrue(cache.IsUnreadable(Key), "The change was made without the stored data.");
+
+            LogAssert.Expect(LogType.Warning, new Regex("holds saved data now"));
+            cache.Flush();
+
+            Assert.AreEqual(0, _asyncStorage.SaveAsyncCount, "Stored data this session never saw wins.");
+            Assert.IsFalse(cache.HasPendingChanges);
+            Assert.IsTrue(cache.TryGet(Key, out string value));
+            Assert.AreEqual("stored", value);
+            Assert.IsFalse(cache.IsUnreadable(Key));
         }
 
         // ---------- PlayerPrefsSaveStorage ----------

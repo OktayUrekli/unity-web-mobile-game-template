@@ -92,6 +92,15 @@ namespace _Core.Save
         }
 
         /// <summary>
+        /// True while the key's last storage read failed and no later read was kept, so what is stored there is
+        /// unknown.
+        /// </summary>
+        public bool IsUnreadable(string key)
+        {
+            return _unreadable.Contains(key);
+        }
+
+        /// <summary>
         /// Gets the stored value for <paramref name="key"/>, reading storage on first access.
         /// Returns false when nothing (or an empty string) is stored, or when storage could not be read.
         /// </summary>
@@ -107,10 +116,12 @@ namespace _Core.Save
                 }
 
                 // An async storage may answer a sync read from its own cache (null for keys it has not loaded),
-                // so only its LoadAsync clears a failed read.
-                if (_asyncStorage == null)
-                    _unreadable.Remove(key);
+                // so only its LoadAsync clears a failed read. Until then the answer is not kept either, so
+                // PreloadAsync can still load the key.
+                if (_asyncStorage != null && _unreadable.Contains(key))
+                    return !string.IsNullOrEmpty(value);
 
+                _unreadable.Remove(key);
                 SetValue(key, value);
             }
 
@@ -137,7 +148,8 @@ namespace _Core.Save
 
         /// <summary>
         /// Loads the given keys into memory. Uses <see cref="IAsyncSaveStorage.LoadAsync"/>
-        /// when available. Keys already in memory are skipped.
+        /// when available. Keys already in memory are skipped. A key whose read failed is read again, unless this
+        /// session changed it since (the next <see cref="Flush()"/> reads it then).
         /// </summary>
         public async Task PreloadAsync(IEnumerable<string> keys)
         {
@@ -168,11 +180,14 @@ namespace _Core.Save
                     continue;
                 }
 
-                _unreadable.Remove(key);
+                // A Set/Remove issued while awaiting wins over the loaded value. A key whose read had failed then stays
+                // marked, so the next Flush reads it again before writing it, and stored data this session never saw
+                // wins.
+                if (_values.ContainsKey(key))
+                    continue;
 
-                // A Set/Remove issued while awaiting wins over the loaded value.
-                if (!_values.ContainsKey(key))
-                    SetValue(key, value);
+                _unreadable.Remove(key);
+                SetValue(key, value);
             }
         }
 

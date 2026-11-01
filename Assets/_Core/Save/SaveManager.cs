@@ -170,7 +170,8 @@ namespace _Core.Save
         /// a fresh <typeparamref name="T"/> when nothing is stored, the stored JSON is corrupt or storage
         /// could not be read (the method then returns false). After a failed read, a later <see cref="Save{T}"/>
         /// to the key is written only once the key can be read: if it then holds data, that data is kept. Data written with an older <see cref="SaveData.saveVersion"/>
-        /// is upgraded through <see cref="SaveData.Migrate"/> before it is returned.
+        /// is upgraded through <see cref="SaveData.Migrate"/> before it is returned. <see cref="IsUnreadable"/> tells
+        /// a failed read apart from a missing save.
         /// </summary>
         public bool Load<T>(string key, out T data) where T : SaveData, new()
         {
@@ -248,6 +249,7 @@ namespace _Core.Save
         /// <summary>
         /// Loads the given keys into memory ahead of time. Required before <see cref="Load{T}"/>
         /// for storages that implement <see cref="IAsyncSaveStorage"/>; harmless for others.
+        /// A key whose earlier read failed is read again, unless this session changed it since.
         /// </summary>
         public Task PreloadAsync(params string[] keys)
         {
@@ -255,6 +257,16 @@ namespace _Core.Save
                 return Task.CompletedTask;
 
             return _cache.PreloadAsync((IEnumerable<string>)keys);
+        }
+
+        /// <summary>
+        /// True while the last read of <paramref name="key"/> from storage failed and no later read was kept, so what
+        /// is stored there is unknown and <see cref="Load{T}"/> may not have returned it. <see cref="PreloadAsync"/>
+        /// reads the key again unless this session changed it since. False before <see cref="Init()"/>.
+        /// </summary>
+        public bool IsUnreadable(string key)
+        {
+            return _cache != null && _cache.IsUnreadable(key);
         }
 
         private void Update()
