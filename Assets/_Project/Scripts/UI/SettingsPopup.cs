@@ -1,3 +1,5 @@
+using _Core.Events;
+using _Core.Events.Settings;
 using _Core.Feedback;
 using _Core.Settings;
 using _Core.UI;
@@ -62,6 +64,7 @@ namespace _Project.UI
             if (vibrationButton != null)
                 vibrationButton.onClick.RemoveListener(OnVibrationClicked);
 
+            EventBus.Unsubscribe<AudioSettingsChangedEvent>(OnAudioSettingsChanged);
             BindLabel(ref _musicText, null, SetMusicLabel);
             BindLabel(ref _sfxText, null, SetSfxLabel);
             BindLabel(ref _vibrationText, null, SetVibrationLabel);
@@ -70,12 +73,24 @@ namespace _Project.UI
         protected override void OnShown()
         {
             RefreshLabels();
+
+            // SettingsManager may apply saved settings it could not read before while the popup is open. Show can run
+            // again while shown, so never subscribe twice.
+            EventBus.Unsubscribe<AudioSettingsChangedEvent>(OnAudioSettingsChanged);
+            EventBus.Subscribe<AudioSettingsChangedEvent>(OnAudioSettingsChanged);
         }
 
         protected override void OnHidden()
         {
+            EventBus.Unsubscribe<AudioSettingsChangedEvent>(OnAudioSettingsChanged);
+
             // One storage write per visit instead of one per click.
             SettingsManager.Instance.Commit();
+        }
+
+        private void OnAudioSettingsChanged(AudioSettingsChangedEvent gameEvent)
+        {
+            RefreshLabels();
         }
 
         private void OnMusicClicked()
