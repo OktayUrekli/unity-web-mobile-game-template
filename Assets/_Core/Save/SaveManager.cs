@@ -262,7 +262,8 @@ namespace _Core.Save
         /// <summary>
         /// True while the last read of <paramref name="key"/> from storage failed and no later read was kept, so what
         /// is stored there is unknown and <see cref="Load{T}"/> may not have returned it. <see cref="PreloadAsync"/>
-        /// reads the key again unless this session changed it since. False before <see cref="Init()"/>.
+        /// reads the key again unless this session changed it since; <see cref="Delete"/> ends it. False before
+        /// <see cref="Init()"/>.
         /// </summary>
         public bool IsUnreadable(string key)
         {

@@ -454,6 +454,24 @@ namespace _Core.Tests
         }
 
         [Test]
+        public void Delete_OfAKeyWhoseReadFailed_EndsIsUnreadable_AndIsWritten()
+        {
+            _storage.ThrowOnRead = true;
+            SaveManager manager = CreateManager(_storage, CreateConfig());
+
+            ExpectReadFailure();
+            manager.Load(Key, out TestSaveData _);
+            Assert.IsTrue(manager.IsUnreadable(Key));
+
+            manager.Delete(Key);
+            Assert.IsFalse(manager.IsUnreadable(Key), "The delete discards whatever is stored there.");
+
+            manager.Flush();
+            Assert.AreEqual(1, _storage.DeleteCount);
+            Assert.IsFalse(manager.HasPendingChanges);
+        }
+
+        [Test]
         public void OnPageHidden_WritesAKeyWhoseEarlierWriteIsStillRunning()
         {
             _asyncStorage = new FakeAsyncSaveStorage();

@@ -93,7 +93,7 @@ namespace _Core.Save
 
         /// <summary>
         /// True while the key's last storage read failed and no later read was kept, so what is stored there is
-        /// unknown.
+        /// unknown. <see cref="Remove"/> ends it.
         /// </summary>
         public bool IsUnreadable(string key)
         {
@@ -138,11 +138,13 @@ namespace _Core.Save
         }
 
         /// <summary>
-        /// Removes the key in memory and marks it for deletion on the next flush.
+        /// Removes the key in memory and marks it for deletion on the next flush. A key whose read failed counts as
+        /// readable again: the delete discards whatever is stored there.
         /// </summary>
         public void Remove(string key)
         {
             SetValue(key, null);
+            _unreadable.Remove(key);
             _dirty.Add(key);
         }
 
