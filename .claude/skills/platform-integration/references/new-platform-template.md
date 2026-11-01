@@ -7,7 +7,7 @@ after reading the plugin's source. Do not ship guessed SDK calls.
 ## Contents
 - Files
 - Platform class (capabilities, init with timeout, service registration)
-- Ads service (event contract, in-flight guard)
+- Ads service (AdRequestTracker)
 - Storage service
 - Registration
 
@@ -160,16 +160,16 @@ Reading `.Result` is fine only after `IsCompleted` is true - it never blocks the
 
 Each bridge keeps its own short realtime loop like this one.
 
-## Ads service (event contract)
+## Ads service (AdRequestTracker)
 
 `PlatformManager` wraps this service in `AdPolicyService` (global in-flight guard, interstitial
-cooldown, `AdRequestedEvent`/`AdRequestCompletedEvent`, exactly-once callback), so the platform
-service only maps the SDK, publishes the start/finish events and keeps its own in-flight flag.
+cooldown, `AdRequestedEvent`/`AdRequestCompletedEvent`, exactly-once callback, timeouts). The platform
+service keeps its own request in an `AdRequestTracker` and only maps the SDK onto it; the tracker
+publishes `AdStartedEvent`/`AdFinishedEvent` in order, answers the callback after releasing the request
+and handles `AdPolicyService`'s timeout (see the `Ads` section of SKILL.md).
 
 ```csharp
 using System;
-using _Core.Events;
-using _Core.Events.Ads;
 using _Core.Platform.Services.Ads;
 using UnityEngine;
 
@@ -180,10 +180,12 @@ namespace _Platforms.MyPortal.Services
     /// </summary>
     public class MyPortalAdsService : IAdsService
     {
-        private bool _isAdShowing;
-        private bool _adStarted;
+        // True: an ad that never started is dropped when AdPolicyService gives up on it. False only for an SDK
+        // that ignores new requests until it answers the last one (CrazySDK). Pass an onTimedOut hook when the SDK
+        // changes something for the ad that it restores only in its own callbacks.
+        private readonly AdRequestTracker _request = new(releaseUnstartedOnTimeout: true);
 
-        public bool IsAdShowing => _isAdShowing;
+        public bool IsAdShowing => _request.IsActive;
 
         public void ShowRewardedAd(Action<AdResult> callback)
         {
@@ -193,31 +195,42 @@ namespace _Platforms.MyPortal.Services
                 return;
             }
 
-            // A second request while one is showing must still answer its callback.
-            if (_isAdShowing)
+            // A second request while one is in flight must still answer its callback.
+            if (!_request.TryBegin(AdType.Rewarded, callback))
             {
                 callback?.Invoke(AdResult.InProgress);
                 return;
             }
 
-            _isAdShowing = true;
-            _adStarted = false;
+            int requestId = _request.Id;
 
-            // Placeholder API: map the vendor's open/rewarded/close/error callbacks.
-            MyPortalSdkBridge.ShowRewarded(
-                onOpen: OnAdStarted,
-                onRewarded: () => FinishAd(AdResult.Completed, callback),
-                onClosedWithoutReward: () => FinishAd(AdResult.Failed, callback),
-                onError: error =>
-                {
-                    Debug.LogWarning($"MyPortal: rewarded ad failed: {error}");
-                    FinishAd(AdResult.Failed, callback);
-                });
+            try
+            {
+                // Placeholder API: map the vendor's open/rewarded/close/error callbacks. A rewarded ad counts as
+                // completed only after the reward callback, also when an error follows it.
+                MyPortalSdkBridge.ShowRewarded(
+                    onOpen: () => _request.NotifyStarted(),
+                    onRewarded: _request.NotifyRewardEarned,
+                    onClose: () => _request.Complete(_request.IsRewardEarned ? AdResult.Completed : AdResult.Failed),
+                    onError: error =>
+                    {
+                        Debug.LogWarning($"MyPortal: rewarded ad failed: {error}");
+                        _request.Complete(_request.IsRewardEarned ? AdResult.Completed : AdResult.Failed);
+                    });
+            }
+            catch (Exception exception)
+            {
+                // Uncaught, the request would stay in flight and every later request would get InProgress.
+                // The SDK may have answered before throwing.
+                Debug.LogException(exception);
+                if (_request.IsCurrent(requestId))
+                    _request.Complete(AdResult.Failed);
+            }
         }
 
         public void ShowInterstitialAd(Action<AdResult> callback)
         {
-            // Same shape as ShowRewardedAd.
+            // Same shape as ShowRewardedAd: open = NotifyStarted, close = Complete(Completed), error = Complete(Failed).
         }
 
         public void PrefetchAd(AdType adType)
@@ -234,29 +247,6 @@ namespace _Platforms.MyPortal.Services
         public void ShowBanner() { }
 
         public void HideBanner() { }
-
-        private void OnAdStarted()
-        {
-            _adStarted = true;
-            EventBus.Publish(new AdStartedEvent());
-        }
-
-        private void FinishAd(AdResult result, Action<AdResult> callback)
-        {
-            if (!_isAdShowing)
-                return; // guard against duplicate close/error callbacks
-
-            _isAdShowing = false;
-
-            // Only a started ad gets a finished event. EventBus isolates handler exceptions,
-            // so the callback still runs.
-            if (_adStarted)
-            {
-                EventBus.Publish(new AdFinishedEvent(result == AdResult.Completed));
-            }
-
-            callback?.Invoke(result);
-        }
     }
 }
 ```

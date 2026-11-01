@@ -96,7 +96,7 @@ in the Unity Editor"). Never kill Unity yourself; use the MCP path or ask the us
 
 ## Where tests go
 
-- EditMode tests cover `_Core` logic: `Assets/_Core/Tests/Editor` (assembly `_Core.Tests.Editor`). A game that tests its own logic adds an EditMode assembly under `_Project` and to the MCP filter above. Internal seams for `_Core` tests: `SaveManager.Init(storage, config)`, `Singleton<T>.SetInstanceForTests`, `PlatformFactory.Unregister`, `EventBus.SubscriberCount<T>`, and `Shutdown()` on `PauseManager` and `GameplayStateManager`.
+- EditMode tests cover `_Core` logic: `Assets/_Core/Tests/Editor` (assembly `_Core.Tests.Editor`). A game that tests its own logic adds an EditMode assembly under `_Project` and to the MCP filter above. Internal seams for `_Core` tests: `SaveManager.Init(storage, config)`, `Singleton<T>.SetInstanceForTests`, `PlatformFactory.Unregister`, `EventBus.SubscriberCount<T>`, `Shutdown()` on `PauseManager` and `GameplayStateManager`, and the `AdPolicyService` constructor that takes a clock, with `CheckTimeout()`.
 - Test-only MonoBehaviours go in `Assets/_Core/Tests/Runtime` (`_Core.Tests.Runtime`): Unity can't attach components from an Editor-only assembly.
 - Gameplay, UI and SDK behaviour are checked by hand: keyboard- or ContextMenu-driven harnesses in `Assets/_Project/Testing/` (or `Assets/_Platforms/<Name>/Testing/` when they use SDK types), placed in test scenes under `Assets/_Project/Scenes/Test/`. Test scenes have a `BootstrapGuard` and stay out of Build Settings (`BuildValidator` blocks them).
 

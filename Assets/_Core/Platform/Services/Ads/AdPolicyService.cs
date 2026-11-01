@@ -19,10 +19,14 @@ namespace _Core.Platform.Services.Ads
         private readonly float _interstitialCooldownSeconds;
         private readonly float _startTimeoutSeconds;
         private readonly float _playTimeoutSeconds;
+        private readonly Func<float> _clock;
 
         // Negative infinity until the first interstitial completes, so the first one is never on cooldown.
         private float _lastInterstitialTime = float.NegativeInfinity;
         private bool _isRequestInProgress;
+
+        // Abandons the request in flight once its time is up; null while no request is in flight.
+        private Action _checkTimeout;
 
         /// <summary>
         /// The wrapped platform implementation.
@@ -39,7 +43,7 @@ namespace _Core.Platform.Services.Ads
         /// Seconds until an interstitial may be shown again; 0 when it is allowed now.
         /// </summary>
         public float InterstitialCooldownRemaining =>
-            Mathf.Max(0f, _lastInterstitialTime + _interstitialCooldownSeconds - Time.realtimeSinceStartup);
+            Mathf.Max(0f, _lastInterstitialTime + _interstitialCooldownSeconds - _clock());
 
         /// <param name="inner">The platform ads service to wrap.</param>
         /// <param name="interstitialCooldownSeconds">Minimum real time between two completed interstitials.</param>
@@ -50,8 +54,23 @@ namespace _Core.Platform.Services.Ads
             float interstitialCooldownSeconds,
             float startTimeoutSeconds = 30f,
             float playTimeoutSeconds = 180f)
+            : this(inner, interstitialCooldownSeconds, startTimeoutSeconds, playTimeoutSeconds, GetRealtime)
+        {
+        }
+
+        /// <summary>
+        /// Test seam: <paramref name="clock"/> returns the current real time in seconds in place of
+        /// <see cref="Time.realtimeSinceStartup"/>, so EditMode tests move time instead of waiting.
+        /// </summary>
+        internal AdPolicyService(
+            IAdsService inner,
+            float interstitialCooldownSeconds,
+            float startTimeoutSeconds,
+            float playTimeoutSeconds,
+            Func<float> clock)
         {
             _inner = inner ?? throw new ArgumentNullException(nameof(inner));
+            _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _interstitialCooldownSeconds = Mathf.Max(0f, interstitialCooldownSeconds);
             _startTimeoutSeconds = Mathf.Max(1f, startTimeoutSeconds);
             _playTimeoutSeconds = Mathf.Max(1f, playTimeoutSeconds);
@@ -105,6 +124,16 @@ namespace _Core.Platform.Services.Ads
             _inner.HideBanner();
         }
 
+        /// <summary>
+        /// Test seam: runs the watchdog's per-frame check now. It abandons the request in flight with
+        /// <see cref="AdResult.TimedOut"/> when the ad has not started within the start timeout or not finished within
+        /// the play timeout, measured on the clock the service was created with.
+        /// </summary>
+        internal void CheckTimeout()
+        {
+            _checkTimeout?.Invoke();
+        }
+
         private void Request(AdType adType, Action<AdResult> callback)
         {
             if (IsAdShowing)
@@ -119,7 +148,7 @@ namespace _Core.Platform.Services.Ads
 
             bool completed = false;
             bool started = false;
-            float requestedAt = Time.realtimeSinceStartup;
+            float requestedAt = _clock();
             float startedAt = 0f;
 
             void OnAdStarted(AdStartedEvent gameEvent)
@@ -128,7 +157,7 @@ namespace _Core.Platform.Services.Ads
                     return;
 
                 started = true;
-                startedAt = Time.realtimeSinceStartup;
+                startedAt = _clock();
             }
 
             void OnInnerResult(AdResult result)
@@ -143,26 +172,30 @@ namespace _Core.Platform.Services.Ads
 
                 completed = true;
                 _isRequestInProgress = false;
+                _checkTimeout = null;
                 EventBus.Unsubscribe<AdStartedEvent>(OnAdStarted);
 
                 if (adType == AdType.Interstitial && result == AdResult.Completed)
-                    _lastInterstitialTime = Time.realtimeSinceStartup;
+                    _lastInterstitialTime = _clock();
 
                 // EventBus isolates handler exceptions; the callback always runs afterwards.
                 EventBus.Publish(new AdRequestCompletedEvent(adType, result));
                 SafeInvoke(callback, result);
             }
 
-            bool IsTimedOut()
+            void TimeOutIfDue()
             {
-                float now = Time.realtimeSinceStartup;
-                return started
+                if (completed)
+                    return;
+
+                float now = _clock();
+                bool isTimedOut = started
                     ? now - startedAt >= _playTimeoutSeconds
                     : now - requestedAt >= _startTimeoutSeconds;
-            }
 
-            void OnTimedOut()
-            {
+                if (!isTimedOut)
+                    return;
+
                 Debug.LogWarning(
                     $"Ads: {adType} request timed out ({(started ? "ad started but never finished" : "ad never started")}). " +
                     "Continuing without it.");
@@ -175,8 +208,12 @@ namespace _Core.Platform.Services.Ads
                 OnInnerResult(AdResult.TimedOut);
             }
 
-            // Platform bridges publish AdStartedEvent when the ad actually begins (see the platform-integration skill).
+            // Platform bridges publish AdStartedEvent when the ad actually begins (AdRequestTracker.NotifyStarted).
             EventBus.Subscribe<AdStartedEvent>(OnAdStarted);
+
+            // Set before the platform call: an answer inside it clears the check, and a request made from the
+            // callback sets its own.
+            _checkTimeout = TimeOutIfDue;
 
             try
             {
@@ -192,25 +229,20 @@ namespace _Core.Platform.Services.Ads
             }
 
             if (!completed)
-                _ = WatchdogAsync(() => completed, IsTimedOut, OnTimedOut);
+                _ = WatchdogAsync(() => completed, TimeOutIfDue);
         }
 
         /// <summary>
-        /// Polls once per frame until the request completes or times out. Uses <see cref="Task.Yield"/>
+        /// Runs <paramref name="timeOutIfDue"/> once per frame until the request completes. Uses <see cref="Task.Yield"/>
         /// instead of <c>Task.Delay</c>, which needs threads that WebGL does not have.
         /// </summary>
-        private static async Task WatchdogAsync(Func<bool> isCompleted, Func<bool> isTimedOut, Action onTimedOut)
+        private static async Task WatchdogAsync(Func<bool> isCompleted, Action timeOutIfDue)
         {
             try
             {
                 while (!isCompleted())
                 {
-                    if (isTimedOut())
-                    {
-                        onTimedOut();
-                        return;
-                    }
-
+                    timeOutIfDue();
                     await Task.Yield();
                 }
             }
@@ -218,6 +250,11 @@ namespace _Core.Platform.Services.Ads
             {
                 Debug.LogException(exception);
             }
+        }
+
+        private static float GetRealtime()
+        {
+            return Time.realtimeSinceStartup;
         }
 
         private static void SafeInvoke(Action<AdResult> callback, AdResult result)

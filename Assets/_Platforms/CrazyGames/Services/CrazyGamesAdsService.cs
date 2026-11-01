@@ -3,8 +3,6 @@
 using System;
 using CrazyGames;
 using _Core.Platform.Services.Ads;
-using _Core.Events;
-using _Core.Events.Ads;
 using UnityEngine;
 
 namespace _Platforms.CrazyGames.Services
@@ -14,34 +12,39 @@ namespace _Platforms.CrazyGames.Services
     /// </summary>
     public class CrazyGamesAdsService : IAdsService
     {
-        private bool _isAdShowing;
-
-        // The request in flight (one at a time): a start event published without its finish event yet, and
-        // whether AdPolicyService gave up on it (the SDK may still answer later).
-        private bool _finishOwed;
-        private bool _isTimedOut;
+        // The request in flight. CrazySDK ignores a new request until it has answered the last one (no callback at
+        // all), so a request stays in flight after AdPolicyService gives up on it, even one whose ad never started:
+        // new requests then get InProgress at once instead of waiting for another timeout.
+        private readonly AdRequestTracker _request;
 
         // What CrazySDK changes for an ad and restores only in its own finish/error callback. The time scale it
         // also changes (pauseGameDuringAd) is left to PauseManager, which owns it and restores its own value.
         private float _volumeBeforeAd;
         private bool _runInBackgroundBeforeAd;
 
-        public bool IsAdShowing => _isAdShowing;
+        /// <summary>
+        /// Creates the service. <c>CrazyGamesPlatform</c> registers it only once CrazySDK is available and initialized.
+        /// </summary>
+        public CrazyGamesAdsService()
+        {
+            _request = new AdRequestTracker(releaseUnstartedOnTimeout: false, onTimedOut: OnRequestTimedOut);
+        }
+
+        public bool IsAdShowing => _request.IsActive;
 
         public void ShowRewardedAd(Action<AdResult> callback)
         {
-            RequestAd(CrazyAdType.Rewarded, callback);
+            RequestAd(AdType.Rewarded, callback);
         }
 
         public void ShowInterstitialAd(Action<AdResult> callback)
         {
-            // CrazyGames calls interstitial advertisements "midgame" ads.
-            RequestAd(CrazyAdType.Midgame, callback);
+            RequestAd(AdType.Interstitial, callback);
         }
 
         public void PrefetchAd(AdType adType)
         {
-            if (!CanShowAds() || _isAdShowing)
+            if (!CanShowAds() || _request.IsActive)
                 return;
 
             CrazySDK.Ad.PrefetchAd(ToCrazyAdType(adType));
@@ -103,9 +106,7 @@ namespace _Platforms.CrazyGames.Services
                 CrazySDK.Banner.RefreshBanners();
         }
 
-        private void RequestAd(
-            CrazyAdType adType,
-            Action<AdResult> callback)
+        private void RequestAd(AdType adType, Action<AdResult> callback)
         {
             if (!CanShowAds())
             {
@@ -115,39 +116,37 @@ namespace _Platforms.CrazyGames.Services
 
             // The SDK silently ignores a second request while one is in progress
             // (no callback at all), so answer overlapping requests here.
-            if (_isAdShowing)
+            if (!_request.TryBegin(adType, callback))
             {
                 callback?.Invoke(AdResult.InProgress);
                 return;
             }
 
-            _isAdShowing = true;
-            _finishOwed = false;
-            _isTimedOut = false;
+            // CrazyGames calls interstitial advertisements "midgame" ads.
+            CrazyAdType crazyAdType = ToCrazyAdType(adType);
             _volumeBeforeAd = AudioListener.volume;
             _runInBackgroundBeforeAd = Application.runInBackground;
-            EventBus.Subscribe<AdRequestCompletedEvent>(OnAdRequestCompleted);
+            int requestId = _request.Id;
 
             try
             {
                 CrazySDK.Ad.RequestAd(
-                    adType,
+                    crazyAdType,
                     OnAdStarted,
                     error =>
                     {
-                        Debug.LogWarning($"CrazyGames: {adType} ad failed: {error}");
-                        Complete(AdResult.Failed, callback);
+                        Debug.LogWarning($"CrazyGames: {crazyAdType} ad failed: {error}");
+                        _request.Complete(AdResult.Failed);
                     },
-                    () =>
-                    {
-                        Complete(AdResult.Completed, callback);
-                    });
+                    () => _request.Complete(AdResult.Completed));
             }
             catch (Exception exception)
             {
-                // RequestAd throws when the SDK is not initialized.
+                // RequestAd throws when the SDK is not initialized. Its Editor simulation can answer inside the call,
+                // so only this request is completed, and only while it is still in flight.
                 Debug.LogException(exception);
-                Complete(AdResult.Failed, callback);
+                if (_request.IsCurrent(requestId))
+                    _request.Complete(AdResult.Failed);
             }
         }
 
@@ -155,53 +154,21 @@ namespace _Platforms.CrazyGames.Services
         {
             // Started after AdPolicyService gave up and the volume was restored: mute again, as the SDK did at
             // request time. The SDK's own cleanup restores it when this ad ends.
-            if (_isTimedOut)
+            if (_request.IsTimedOut)
                 AudioListener.volume = 0f;
 
-            _finishOwed = true;
-
             // Gameplay is already paused by PauseManager for the whole request (AdRequestedEvent).
-            EventBus.Publish(new AdStartedEvent());
+            _request.NotifyStarted();
         }
 
         /// <summary>
         /// Undoes what the SDK changed for the ad when AdPolicyService gives up on it. The SDK restores these only
         /// in its own finish/error callback, so without this the game stays muted until the SDK answers.
         /// </summary>
-        private void OnAdRequestCompleted(AdRequestCompletedEvent gameEvent)
+        private void OnRequestTimedOut()
         {
-            if (gameEvent.Result != AdResult.TimedOut || !_isAdShowing || _isTimedOut)
-                return;
-
-            _isTimedOut = true;
-
-            // AdPolicyService has published the finish event itself if the ad had started.
-            _finishOwed = false;
-
             AudioListener.volume = _volumeBeforeAd;
             Application.runInBackground = _runInBackgroundBeforeAd;
-
-            // _isAdShowing stays set until the SDK answers: the SDK ignores new requests until then (no callback
-            // at all), so they get InProgress at once instead of waiting for another timeout.
-        }
-
-        /// <summary>
-        /// Clears the in-flight flag, publishes the finish event owed for an ad that actually started,
-        /// then always invokes the caller's callback (AdPolicyService ignores it after a timeout).
-        /// </summary>
-        private void Complete(AdResult result, Action<AdResult> callback)
-        {
-            _isAdShowing = false;
-            EventBus.Unsubscribe<AdRequestCompletedEvent>(OnAdRequestCompleted);
-
-            // EventBus isolates handler exceptions, so the callback below always runs.
-            if (_finishOwed)
-            {
-                _finishOwed = false;
-                EventBus.Publish(new AdFinishedEvent(result == AdResult.Completed));
-            }
-
-            callback?.Invoke(result);
         }
 
         private static CrazyAdType ToCrazyAdType(AdType adType)

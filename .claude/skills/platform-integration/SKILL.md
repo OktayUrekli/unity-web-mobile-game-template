@@ -46,18 +46,12 @@ Interface (no SDK types, `Action<T>` callbacks) + Null service + `PlatformManage
 
 ## Ads
 
-`PlatformManager` wraps every ads service in `AdPolicyService`: one request at a time (`InProgress`), interstitial cooldown (`Cooldown`), `AdRequestedEvent`/`AdRequestCompletedEvent`, an exactly-once callback, and a watchdog (`TimedOut`) when the ad doesn't start within `AdStartTimeoutSeconds` or finish within `AdPlayTimeoutSeconds`. A bridge doesn't repeat that; it publishes the events around the ad itself:
+`PlatformManager` wraps every ads service in `AdPolicyService`: one request at a time (`InProgress`), interstitial cooldown (`Cooldown`), `AdRequestedEvent`/`AdRequestCompletedEvent`, an exactly-once callback, and a watchdog (`TimedOut`) when the ad doesn't start within `AdStartTimeoutSeconds` or finish within `AdPlayTimeoutSeconds`. A bridge doesn't repeat that. It answers `NotAvailable` while its SDK isn't ready and keeps its request in an `AdRequestTracker` (internal to `_Core`): `TryBegin` false means `InProgress`, and the SDK's start, reward and end map onto `NotifyStarted()`, `NotifyRewardEarned()` and `Complete(result)`, which publish `AdStartedEvent`, then `AdFinishedEvent` for a started ad, then the callback.
 
-| Moment | Publish, in order |
-|---|---|
-| Ad started | `AdStartedEvent` |
-| Finished | `AdFinishedEvent(true)`, callback `Completed` |
-| Failed after start | `AdFinishedEvent(false)`, callback `Failed` |
-| Failed before start / SDK not ready | callback `Failed` / `NotAvailable` only |
-
-- Publish `AdStartedEvent` when the ad really starts, or the watchdog cuts slow-loading ads.
-- Keep an own in-flight flag: some SDKs (CrazySDK) silently ignore a second request.
-- Pausing is not the bridge's job; `PauseManager` handles the whole request. On `TimedOut`, undo whatever the SDK changed for the ad and don't publish `AdFinishedEvent` again.
+- Call `NotifyStarted()` when the ad really starts, or the watchdog cuts slow-loading ads.
+- On `TimedOut` the tracker drops the owed `AdFinishedEvent`, runs the bridge's `onTimedOut` hook (undo there what the SDK changed for the ad) and keeps the request until the SDK answers. `releaseUnstartedOnTimeout: true` drops an ad that never started instead; pass false only for an SDK that ignores new requests until it answers (CrazySDK).
+- When an SDK can answer an abandoned ad after a newer request began, tag its callbacks with `Id` and check `IsCurrent(id)`.
+- Pausing is not the bridge's job; `PauseManager` handles the whole request.
 - Banners stay out of gameplay.
 
 ## Other rules

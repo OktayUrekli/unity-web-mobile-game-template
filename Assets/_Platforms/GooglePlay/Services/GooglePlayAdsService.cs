@@ -2,8 +2,6 @@
 #if PLATFORM_GOOGLEPLAY
 using System;
 using System.Threading.Tasks;
-using _Core.Events;
-using _Core.Events.Ads;
 using _Core.Platform.Services.Ads;
 using _Platforms.GooglePlay.Core;
 using GoogleMobileAds.Api;
@@ -53,17 +51,16 @@ namespace _Platforms.GooglePlay.Services
         private BannerView _banner;
         private bool _isBannerWanted;
 
-        // The request in flight (one at a time). Callbacks of a shown ad carry its request ID, so a late callback of
-        // an abandoned ad is ignored. _finishOwed: a start event was published without its finish event yet.
-        private bool _isAdShowing;
-        private int _requestId;
+        // The request in flight. Callbacks of a shown ad carry its request ID, so a late callback of an abandoned ad
+        // is ignored. An ad on screen keeps the request until it closes; one that never opened is destroyed and its
+        // request released when AdPolicyService gives up (OnRequestTimedOut).
+        private readonly AdRequestTracker _request;
         private float _requestedAt;
-        private AdType _adType;
-        private Action<AdResult> _callback;
         private Action _destroyShownAd;
-        private bool _isWaitingForLoad;
-        private bool _finishOwed;
-        private bool _earnedReward;
+
+        // The rewarded request that waits for a load to show its ad, or 0. Checked with AdRequestTracker.IsCurrent,
+        // so it needs no reset when that request ends.
+        private int _waitingForLoadRequestId;
 
         /// <param name="adUnits">The ad unit IDs this build uses.</param>
         /// <param name="adStartTimeoutSeconds"><c>PlatformConfig.AdStartTimeoutSeconds</c>, used by AdPolicyService.</param>
@@ -71,13 +68,14 @@ namespace _Platforms.GooglePlay.Services
         {
             _adUnits = adUnits;
             _adStartTimeoutSeconds = adStartTimeoutSeconds;
+            _request = new AdRequestTracker(releaseUnstartedOnTimeout: true, onTimedOut: OnRequestTimedOut);
 
             GooglePlayMobileAds.Ready += OnSdkReady;
             if (GooglePlayMobileAds.IsReady)
                 OnSdkReady();
         }
 
-        public bool IsAdShowing => _isAdShowing;
+        public bool IsAdShowing => _request.IsActive;
 
         public void ShowRewardedAd(Action<AdResult> callback)
         {
@@ -135,7 +133,7 @@ namespace _Platforms.GooglePlay.Services
                 return;
             }
 
-            if (_isAdShowing)
+            if (!_request.TryBegin(adType, callback))
             {
                 callback?.Invoke(AdResult.InProgress);
                 return;
@@ -145,24 +143,16 @@ namespace _Platforms.GooglePlay.Services
             {
                 Debug.Log("GooglePlay: Interstitial not loaded yet, skipped.");
                 LoadInterstitial(ignoreRetryDelay: false);
-                callback?.Invoke(AdResult.Failed);
+                _request.Complete(AdResult.Failed);
                 return;
             }
 
-            _isAdShowing = true;
-            _requestId++;
             _requestedAt = Time.realtimeSinceStartup;
-            _adType = adType;
-            _callback = callback;
             _destroyShownAd = null;
-            _isWaitingForLoad = false;
-            _finishOwed = false;
-            _earnedReward = false;
-            EventBus.Subscribe<AdRequestCompletedEvent>(OnAdRequestCompleted);
 
             if (adType == AdType.Rewarded && !CanShow(_rewarded, _rewardedLoadedAt))
             {
-                _isWaitingForLoad = true;
+                _waitingForLoadRequestId = _request.Id;
                 LoadRewarded(ignoreRetryDelay: true);
                 return;
             }
@@ -176,11 +166,11 @@ namespace _Platforms.GooglePlay.Services
         /// </summary>
         private void ShowLoadedAd()
         {
-            int requestId = _requestId;
+            int requestId = _request.Id;
 
             try
             {
-                if (_adType == AdType.Rewarded)
+                if (_request.AdType == AdType.Rewarded)
                 {
                     RewardedAd ad = _rewarded;
                     _rewarded = null;
@@ -206,33 +196,32 @@ namespace _Platforms.GooglePlay.Services
             catch (Exception exception)
             {
                 Debug.LogException(exception);
-                FinishShownAd(AdResult.Failed);
+
+                // A placeholder ad may already have answered before throwing.
+                if (_request.IsCurrent(requestId))
+                    FinishShownAd(AdResult.Failed);
             }
         }
 
         private void OnAdOpened(int requestId)
         {
-            if (requestId != _requestId || !_isAdShowing || _finishOwed)
-                return;
-
-            _finishOwed = true;
-
             // Gameplay is already paused and muted by PauseManager and AudioManager for the whole request.
-            EventBus.Publish(new AdStartedEvent());
+            if (_request.IsCurrent(requestId))
+                _request.NotifyStarted();
         }
 
         private void OnUserEarnedReward(int requestId)
         {
-            if (requestId == _requestId)
-                _earnedReward = true;
+            if (_request.IsCurrent(requestId))
+                _request.NotifyRewardEarned();
         }
 
         private void OnAdClosed(int requestId)
         {
-            if (requestId != _requestId || !_isAdShowing)
+            if (!_request.IsCurrent(requestId))
                 return;
 
-            if (_adType == AdType.Rewarded && !_earnedReward)
+            if (_request.AdType == AdType.Rewarded && !_request.IsRewardEarned)
             {
                 _ = FinishRewardedAfterCloseAsync(requestId);
                 return;
@@ -251,33 +240,30 @@ namespace _Platforms.GooglePlay.Services
             try
             {
                 float deadline = Time.realtimeSinceStartup + LateRewardGraceSeconds;
-                while (IsCurrent(requestId) && !_earnedReward && Time.realtimeSinceStartup < deadline)
+                while (_request.IsCurrent(requestId) && !_request.IsRewardEarned && Time.realtimeSinceStartup < deadline)
                     await Task.Yield();
 
                 // A show failure or a second close may have answered meanwhile.
-                if (IsCurrent(requestId))
-                    FinishShownAd(_earnedReward ? AdResult.Completed : AdResult.Failed);
+                if (_request.IsCurrent(requestId))
+                    FinishShownAd(_request.IsRewardEarned ? AdResult.Completed : AdResult.Failed);
             }
             catch (Exception exception)
             {
                 Debug.LogException(exception);
-                if (IsCurrent(requestId))
+                if (_request.IsCurrent(requestId))
                     FinishShownAd(AdResult.Failed);
             }
         }
 
-        private bool IsCurrent(int requestId)
-        {
-            return requestId == _requestId && _isAdShowing;
-        }
-
         private void OnAdFailedToShow(int requestId, AdError error)
         {
-            if (requestId != _requestId || !_isAdShowing)
+            if (!_request.IsCurrent(requestId))
                 return;
 
-            Debug.LogWarning($"GooglePlay: {_adType} ad failed to show: {error?.GetMessage()}");
-            FinishShownAd(_adType == AdType.Rewarded && _earnedReward ? AdResult.Completed : AdResult.Failed);
+            Debug.LogWarning($"GooglePlay: {_request.AdType} ad failed to show: {error?.GetMessage()}");
+            FinishShownAd(_request.AdType == AdType.Rewarded && _request.IsRewardEarned
+                ? AdResult.Completed
+                : AdResult.Failed);
         }
 
         /// <summary>
@@ -285,9 +271,9 @@ namespace _Platforms.GooglePlay.Services
         /// </summary>
         private void FinishShownAd(AdResult result)
         {
-            AdType adType = _adType;
+            AdType adType = _request.AdType;
             DestroyShownAd();
-            Complete(result);
+            _request.Complete(result);
 
             if (adType == AdType.Rewarded)
                 LoadRewarded(ignoreRetryDelay: false);
@@ -296,52 +282,14 @@ namespace _Platforms.GooglePlay.Services
         }
 
         /// <summary>
-        /// AdPolicyService gave up on the request. An ad on screen keeps the request open until it closes (the finish
-        /// event is already published); otherwise the request is dropped, a rewarded ad that loads later is kept for
-        /// the next request, and late callbacks of an ad that never opened are ignored.
+        /// AdPolicyService gave up on the request. An ad on screen keeps the request open until it closes; an ad that
+        /// never opened is destroyed here and the tracker then releases its request (a rewarded ad that loads later is
+        /// kept for the next request, and late callbacks of the destroyed ad are ignored).
         /// </summary>
-        private void OnAdRequestCompleted(AdRequestCompletedEvent gameEvent)
+        private void OnRequestTimedOut()
         {
-            if (gameEvent.Result != AdResult.TimedOut || !_isAdShowing)
-                return;
-
-            if (_finishOwed)
-            {
-                _finishOwed = false;
-                return;
-            }
-
-            _requestId++;
-            DestroyShownAd();
-            Release();
-
-            // AdPolicyService has answered the caller already.
-        }
-
-        /// <summary>
-        /// Clears the request, publishes the finish event owed for an ad that actually opened, then always invokes
-        /// the caller's callback (AdPolicyService ignores it after a timeout).
-        /// </summary>
-        private void Complete(AdResult result)
-        {
-            Action<AdResult> callback = _callback;
-            bool finishOwed = _finishOwed;
-            Release();
-
-            // EventBus isolates handler exceptions, so the callback below always runs.
-            if (finishOwed)
-                EventBus.Publish(new AdFinishedEvent(result == AdResult.Completed));
-
-            callback?.Invoke(result);
-        }
-
-        private void Release()
-        {
-            _isAdShowing = false;
-            _isWaitingForLoad = false;
-            _finishOwed = false;
-            _callback = null;
-            EventBus.Unsubscribe<AdRequestCompletedEvent>(OnAdRequestCompleted);
+            if (!_request.HasStarted)
+                DestroyShownAd();
         }
 
         private void DestroyShownAd()
@@ -436,8 +384,8 @@ namespace _Platforms.GooglePlay.Services
                 Debug.LogWarning($"GooglePlay: Rewarded ad failed to load: {error?.GetMessage()}");
                 _rewardedRetryAt = Time.realtimeSinceStartup + LoadRetryDelaySeconds;
 
-                if (_isAdShowing && _isWaitingForLoad && _adType == AdType.Rewarded)
-                    Complete(AdResult.Failed);
+                if (_request.IsCurrent(_waitingForLoadRequestId))
+                    _request.Complete(AdResult.Failed);
 
                 return;
             }
@@ -446,15 +394,15 @@ namespace _Platforms.GooglePlay.Services
             _rewarded = ad;
             _rewardedLoadedAt = DateTime.UtcNow;
 
-            if (_isAdShowing && _isWaitingForLoad && _adType == AdType.Rewarded)
+            if (_request.IsCurrent(_waitingForLoadRequestId))
             {
-                _isWaitingForLoad = false;
+                _waitingForLoadRequestId = 0;
 
                 float margin = Mathf.Min(LateShowMarginSeconds, _adStartTimeoutSeconds * 0.5f);
                 if (Time.realtimeSinceStartup - _requestedAt > _adStartTimeoutSeconds - margin)
                 {
                     Debug.Log("GooglePlay: Rewarded ad loaded too late for this request; kept for the next one.");
-                    Complete(AdResult.Failed);
+                    _request.Complete(AdResult.Failed);
                     return;
                 }
 
