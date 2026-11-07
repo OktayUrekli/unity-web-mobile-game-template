@@ -36,13 +36,11 @@ The repo ships in the 2D profile (`GAME_2D`, `URP_2D`). Switch with `Tools/Templ
 
 ## Skills and plugins
 
-Project skills in `.claude/skills/` hold this project's contracts and traps; read the one that fits and use your own judgement beyond it. They and this file win over any plugin skill, hook or style rule on the same topic; other plugin guidance (terse chat, thinking before coding, small diffs) applies on top.
+Project skills in `.claude/skills/` hold this project's contracts and traps; read the one that fits and use your own judgement beyond it. Cloud project threads don't load them, so a skill or `/command` named here can be missing from your skill list: then read `.claude/skills/<name>/SKILL.md` yourself. Project skills and this file win over any plugin skill on the same topic; other plugin guidance (thinking before coding, small diffs) applies on top.
 
-- Review: `unity-code-review`. Verification: `unity-verify`. New game: `/new-game-from-template`, never a plugin's new-project flow. Commits follow the git rule above, not a plugin's format.
+- Review: `unity-code-review`. Verification: `unity-verify`. New game: `/new-game-from-template`, never a plugin's new-project flow.
 - A plugin skill that runs C# in the Editor through `unity-cli` runs it through Unity MCP (`Unity_RunCommand`) here. Never install `unity-cli` or `com.unity.pipeline`; never add LevelPlay or Unity Gaming Services.
 - Sprite atlases are hand-made `.spriteatlasv2` assets; don't add generated atlas scripts.
-- A terse style applies to chat only; files, comments, commits and PR text use full sentences.
-- No plugin setup unless asked: no status-line offers, no init command that writes other tools' rule files (`AGENTS.md`, `.cursor/`, ...) into the repo.
 
 ## Keeping these docs small
 
@@ -51,6 +49,6 @@ Every game made from the template carries this file and the skills, and `/templa
 - Docs hold rules and traps the code doesn't show; signatures, call order and file lists come from the code. Each rule lives in one place; elsewhere, point to it.
 - Fix a doc in the same change that makes it wrong. Add a rule only for a trap that would mislead the next session and that the code can't show; prefer fixing the cause (code, validator, tool). Your own one-off slips, history, dates, counts and changelogs get no line anywhere.
 - Every session loads CLAUDE.md, so a line added there replaces or shortens another, and detail goes to a skill. A SKILL.md stays short, with rare detail in `references/`.
-- Edit docs by hand, never with a compress or trim tool, and name every doc change in your reply.
+- Edit docs by hand and name every doc change in your reply.
 - Framework skills name no game; a game's own rules go in CLAUDE.md `## Game` or a game skill.
 - Current defects: `.claude/skills/unity-code-review/references/known-issues.md` (its header says when to change it).
